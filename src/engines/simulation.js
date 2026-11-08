@@ -56,9 +56,13 @@ function simulate(model,options){
          (op==="gte"&&observed>=threshold)||(op==="lte"&&observed<=threshold)||
          (op==="gt"&&observed>threshold)||(op==="lt"&&observed<threshold);
        if(!triggered){actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:false,responded:false,probability:0});return;}
-       const chance=Math.max(0,Math.min(1,Number(actor.responseChance??45)/100));
+       const baseChance=Math.max(0,Math.min(1,Number(actor.responseChance??45)/100));
+       // Explicit user-entered drivers; transparent heuristics, not learned psychology.
+       const modifiers={goalAlignment:Math.max(-5,Math.min(5,Number(actor.goalAlignment)||0))*.025,incentivePressure:(clamp(actor.incentivePressure??5)-5)*.012,resourceCapacity:(clamp(actor.resourceCapacity??5)-5)*.018,perceivedRisk:(clamp(actor.riskTolerance??5)-clamp(actor.perceivedRisk??5))*.012,informationConfidence:(clamp(actor.informationConfidence??5)-5)*.008};
+       const adjustment=Object.values(modifiers).reduce((sum,value)=>sum+value,0);
+       const chance=Math.max(0,Math.min(1,baseChance+adjustment));
        const responded=rng()<chance;
-       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:true,responded,probability:chance,triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null});
+       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null});
        if(responded){
          Object.entries(effects).forEach(([k,v])=>{levels[k]=clamp(levels[k]+v*.45);});
          stepNotes.push("Actor policy response ("+(actor.policy||"custom")+"): "+actor.name);
