@@ -484,3 +484,14 @@ input,textarea,select{accent-color:#9cebd8}
 @media(prefers-reduced-motion:reduce){
  *,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+
+/* STRATOS — generated-world and causal trace presentation */
+.world-build,.causal-trace{background:linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid rgba(220,238,255,.16);backdrop-filter:blur(24px) saturate(145%);-webkit-backdrop-filter:blur(24px) saturate(145%);box-shadow:0 18px 50px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.08)}
+.world-build .metric{background:rgba(255,255,255,.045);border:1px solid rgba(220,238,255,.12);border-radius:14px;padding:14px}
+.trace-list{display:grid;gap:12px;margin-top:18px}
+.trace-step{position:relative;padding:16px 18px;border:1px solid rgba(220,238,255,.13);border-radius:16px;background:rgba(255,255,255,.035)}
+.trace-step h3{margin:5px 0 10px;font-family:'Space Grotesk','DM Sans',sans-serif}
+.trace-step li{margin:8px 0}
+.trace-step p.small{opacity:.78;margin:5px 0 0}
+@media(max-width:700px){.world-build .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}.trace-step{padding:13px}}
