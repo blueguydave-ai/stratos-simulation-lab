@@ -88,7 +88,7 @@ function simulate(model,options){
      stepNotes.push((message.name||"Message")+" delivered to "+recipient.name+"; belief changed "+before.toFixed(1)+" to "+after.toFixed(1));
    }
    for(const group of groups.filter(item=>Math.max(1,Number(item.when)||1)===t)){
-     const memberIds=String(group.memberIds||"").split(/[,;]+/).map(x=>x.trim()).filter(Boolean),members=memberIds.map(id=>actors.find(actor=>actor.id===id)).filter(Boolean);
+     const memberIds=String(group.memberIds||"").split(/[,;]+/).map(x=>x.trim()).filter(Boolean),members=memberIds.map(id=>actors.find(actor=>actor.id===id||String(actor.name||"").toLowerCase()===id.toLowerCase())).filter(Boolean);
      const variable=variables.find(item=>item.id===group.triggerVariable),value=variable?levels[variable.id]:null,op=group.triggerOperator||"gte",threshold=Number(group.triggerThreshold??5);
      const triggered=!variable||(op==="gte"?value>=threshold:op==="lte"?value<=threshold:op==="gt"?value>threshold:value<threshold);
      const support=Math.max(0,Math.min(100,Number(group.supportLevel??50))),required=Math.max(0,Math.min(100,Number(group.decisionThreshold??50)));
