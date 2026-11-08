@@ -9,7 +9,7 @@
     schemaVersion: VERSION, version: VERSION,
     meta: { title:"Untitled situation", createdAt:new Date().toISOString(), updatedAt:null, domainPack:"general", modelStatus:"draft" },
     situation: { outcome:"", deadline:"", position:"", description:"", geography:"", country:"", region:"", locality:"", institution:"", industry:"", market:"", legal:"", social:"", timeHorizon:"30 days", boundary:"" },
-    actors:[], variables:[], links:[], events:[], communications:[], relationships:[], powerRelations:[], institutions:[], groups:[], decisions:[], branches:[],
+    actors:[], variables:[], links:[], events:[], communications:[], relationships:[], powerRelations:[], institutions:[], markets:[], groups:[], decisions:[], branches:[],
     scenarioOverrides:{base:{},favourable:{},adverse:{},custom:{}}, experiments:[], evidence:[], runs:[]
   });
   function normalizeModel(input) {
