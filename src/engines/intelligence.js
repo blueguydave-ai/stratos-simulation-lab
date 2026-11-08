@@ -39,7 +39,7 @@ function enhance(model,run,options){
    Object.entries(effectMap).forEach(([id,amount])=>{const actual=amount*(capacity?ratio:0);state[id]=clamp(Number(state[id]??5)+actual);applied[id]=Number(actual.toFixed(3));});
    resourceOut.push({id:r.id,name:r.name||"Resource",step,before,consumed:used,replenished:replenishment,after,capacity,utilization:capacity?Number((1-after/capacity).toFixed(3)):0,shortfall,applied});
   });
-  constraints.filter(c=>(Number(c.when)||1)<=step&&(c.until===undefined||c.until===""||step<=Number(c.until))).forEach(c=>{
+  constraints.filter(c=>!c.disabled&&(Number(c.when)||1)<=step&&(c.until===undefined||c.until===""||step<=Number(c.until))).forEach(c=>{
    const trigger=variables.find(v=>v.id===c.triggerVariable),value=trigger?Number(state[trigger.id]??5):null,threshold=Number(c.triggerThreshold??5),op=c.triggerOperator||"gte";
    const triggered=!trigger||(op==="lte"?value<=threshold:op==="gt"?value>threshold:op==="lt"?value<threshold:value>=threshold);
    const effectMap=parseEffects(c.effects,variables),applied={};
@@ -52,6 +52,7 @@ function enhance(model,run,options){
   snap.levels=state;stepSnapshots.push({step,levels:{...state},resources:resources.map(r=>({id:r.id,level:resourceState[r.id]})),activeConstraints:constraintOut.filter(x=>x.step===step&&x.triggered).map(x=>x.name),unmetDependencies:missing.map(x=>x.name)});
  });
  Object.assign(run.finalLevels,stepSnapshots.length?stepSnapshots[stepSnapshots.length-1].levels:levels);
+ let weighted=0,weight=0;variables.forEach(v=>{const polarity=v.direction==="positive"?1:v.direction==="negative"?-1:0,w=Math.max(0,Number(v.importance)||1)*({low:.55,medium:.8,high:1}[v.confidence]||.6);weighted+=(Number(run.finalLevels[v.id]??5)-5)*polarity*w;weight+=w;});run.score=weight?Math.round(Math.max(0,Math.min(100,50+weighted/(weight*5)*50))):50;run.low=Math.min(run.low,run.score);run.high=Math.max(run.high,run.score);
  run.timeline=timeline;
  run.steps=timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+Number(x.levels[v.id]??5).toFixed(1)).join("; ")}));
  run.constraints=constraintOut;run.resources=resourceOut;run.dependencies=dependencyOut;run.intelligenceTimeline=stepSnapshots;
