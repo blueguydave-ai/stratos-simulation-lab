@@ -222,7 +222,7 @@ const searchAliases={
 "Subscription / retention":"membership recurring billing renewal cancellation churn SaaS",
 "Real estate brokerage":"property housing landlord tenant rental lease sale viewing title",
 "Talent / recruitment brokerage":"staffing hiring placement headhunter job candidate employer vacancy",
-"Creative / music placement":"sync licensing music supervisor soundtrack film television advert commercial publisher label A&R",
+"Creative / music placement":"sync licensing music supervisor soundtrack film television advert commercial publisher label A&R beats beat instrumental artist producer musician track song catalogue email outreach cold pitch follow-up no reply ignored response",
 "Commercial deal intermediary":"introducer finder fee referral commission sourcing partnership",
 "Price / commercial negotiation":"bargaining quotation discount terms contract payment scope",
 "Multi-party negotiation":"procurement committee board approval coalition veto stakeholders",
