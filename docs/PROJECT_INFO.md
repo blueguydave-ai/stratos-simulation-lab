@@ -115,3 +115,7 @@ Added a `decisionInteractions` collection with actor, linked negotiation, action
 
 ### Information networks, narrative framing and reputation signals
 Communication records now support narrative label, framing, recorded persuasion approach, source visibility, ordered relay recipients, forwarding probability, relay delay and credibility decay. The engine simulates explicit relay chains, applies information-access restrictions at each hop, and records forwarded delivery depth and belief changes. Misleading messages may change beliefs without changing objective variable levels. Six engine tests were added for relay, no-forward conditions, credibility decay, access restrictions, belief/world separation and reproducibility. This does not automatically infer persuasion effectiveness or model a complete social network. Browser test execution remains outstanding.
+
+
+### Reputation, status signals and audience-specific perceptions
+Added a Reputation & audience perceptions editor to the Actors workspace. Reputation events support target actor, positive/negative signal, magnitude, source credibility, evidence status (verified/contested/unverified), audience scope (everyone/selected actors/group), schedule and source notes. The engine tracks run-local subject-observer reputation scores and applies a small bounded modifier to responses toward a selected strategy initiator. This is an explicit heuristic, not a universal law of social status or independent verification of claims. Four tests were defined; browser execution remains outstanding.
