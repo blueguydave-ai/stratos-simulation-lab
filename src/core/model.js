@@ -61,7 +61,7 @@
       if(!x||typeof x!=="object")return;
       if(x.triggerVariable&&!variableIds.has(x.triggerVariable))warnings.push({code:"constraint.trigger_missing",path:"constraints["+i+"]",message:"Constraint activation references a missing variable."});
       if(x.targetVariable&&!variableIds.has(x.targetVariable))errors.push({code:"constraint.target_missing",path:"constraints["+i+"]",message:"Constraint cap references a missing variable."});
-      if(x.until!==undefined&&x.until!==""&&Number(x.until)<Number(x.when||1))errors.push({code:"constraint.duration",path:"constraints["+i+"]",message:"Constraint end step cannot precede its start step."});
+      if(x.until!==undefined&&x.until!==""&&Number(x.until)>0&&Number(x.until)<Number(x.when||1))errors.push({code:"constraint.duration",path:"constraints["+i+"]",message:"Constraint end step cannot precede its start step."});
       if(x.severity!==undefined&&(!Number.isFinite(Number(x.severity))||Number(x.severity)<0||Number(x.severity)>10))errors.push({code:"constraint.severity",path:"constraints["+i+"]",message:"Constraint severity must be from 0 to 10."});
     });
     records("resources").forEach((x,i)=>{
