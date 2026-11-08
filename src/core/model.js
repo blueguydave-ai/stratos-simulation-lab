@@ -1,15 +1,15 @@
 /* STRATOS Core — portable model contract. No framework or runtime dependency. */
 (function (root) {
   "use strict";
-  const VERSION = 3;
-  const COLLECTIONS = ["actors","variables","links","events","communications","relationships","powerRelations","institutions","markets","segments","competitors","journeys","journeyPoints","negotiations","negotiationParties","decisionInteractions","reputationEvents","groups","groupEvents","aiSystems","aiEvents","decisions","branches","experiments","evidence","runs"];
+  const VERSION = 4;
+  const COLLECTIONS = ["actors","variables","links","events","communications","relationships","powerRelations","institutions","markets","segments","competitors","journeys","journeyPoints","negotiations","negotiationParties","decisionInteractions","reputationEvents","groups","groupEvents","aiSystems","aiEvents","constraints","resources","dependencies","decisions","branches","experiments","evidence","runs"];
   const CONTEXT_FIELDS = ["country","region","locality","institution","industry","market","legal","social","timeHorizon","boundary"];
   const id = () => "st_" + Math.random().toString(36).slice(2,10);
   const freshModel = () => ({
     schemaVersion: VERSION, version: VERSION,
     meta: { title:"Untitled situation", createdAt:new Date().toISOString(), updatedAt:null, domainPack:"general", modelStatus:"draft" },
     situation: { outcome:"", deadline:"", position:"", description:"", geography:"", country:"", region:"", locality:"", institution:"", industry:"", market:"", legal:"", social:"", timeHorizon:"30 days", boundary:"" },
-    actors:[], variables:[], links:[], events:[], communications:[], relationships:[], powerRelations:[], institutions:[], markets:[], segments:[], competitors:[], journeys:[], journeyPoints:[], negotiations:[], negotiationParties:[], decisionInteractions:[], reputationEvents:[], groups:[], groupEvents:[], aiSystems:[], aiEvents:[], decisions:[], branches:[],
+    actors:[], variables:[], links:[], events:[], communications:[], relationships:[], powerRelations:[], institutions:[], markets:[], segments:[], competitors:[], journeys:[], journeyPoints:[], negotiations:[], negotiationParties:[], decisionInteractions:[], reputationEvents:[], groups:[], groupEvents:[], aiSystems:[], aiEvents:[], constraints:[], resources:[], dependencies:[], decisions:[], branches:[],
     scenarioOverrides:{base:{},favourable:{},adverse:{},custom:{}}, experiments:[], evidence:[], runs:[]
   });
   function normalizeModel(input) {
