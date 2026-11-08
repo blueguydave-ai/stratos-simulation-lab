@@ -11,7 +11,7 @@ The current app is a static GitHub Pages site. This increment adds zero third-pa
 2. Canonical model — versioned situation schema and stable record IDs.
 3. Validation — structural errors separated from evidence and completeness warnings.
 4. Domain packs — business, brokerage, negotiation, relationships, institutions and cross-cultural prompts/entities.
-5. Simulation engines — deterministic seeded scenario runner, event sampling, conditional actor policies, transparent numeric decision drivers, actor-specific beliefs, information access and scheduled actor-to-actor communications and directional trust/respect relationships, explicitly configured group/coalition action and support thresholds, causal propagation and once-per-step delayed links.
+5. Simulation engines — deterministic seeded scenario runner, event sampling, conditional actor policies, transparent numeric decision drivers, actor-specific beliefs, information access and scheduled actor-to-actor communications and directional trust/respect relationships, explicit directional power/dependency relations that adjust responses to holder-led strategies, explicitly configured group/coalition action and support thresholds, causal propagation and once-per-step delayed links.
 6. Evidence and context (next) — source, date, scope, sample, licence, confidence, counterevidence and review cadence.
 7. External intelligence (later) — optional AI adapter and retrieval; never silently invent simulation outcomes.
 
@@ -42,3 +42,7 @@ Do not install Mesa, SimPy, PostgreSQL, Redis, vector databases or an LLM stack 
 
 ## Current boundary
 This increment adds a versioned core contract, validation and domain registry. It does not replace the v2 simulation algorithm or claim validated behavioural realism. The legacy UI remains available while the core is introduced incrementally.
+
+
+## Power and dependency relations
+Power relations are directed records between a strategy initiator (holder) and a dependent actor. They identify the user-entered source of leverage, leverage strength, dependency and perceived legitimacy. When the holder is the selected decision's actor, the relation can apply a bounded transparent modifier (maximum ±0.12 per relation) to the dependent actor's response propensity. Mobilizing and discouraging effects are explicit user choices. This is a scenario rule, not a general theory of authority or compliance; it does not infer coercion, consent, legal authority or actual control.
