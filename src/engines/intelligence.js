@@ -64,6 +64,7 @@ function enhance(model,run,options){
  run.timeline=timeline;
  run.steps=timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+Number(x.levels[v.id]??5).toFixed(1)).join("; ")}));
  run.constraints=constraintOut;run.resources=resourceOut;run.dependencies=dependencyOut;run.intelligenceTimeline=stepSnapshots;
+ run.metrics={...(run.metrics||{}),constraintsTriggered:constraintOut.filter(x=>x.triggered).length,resourcesTracked:resources.length,resourceShortfalls:resourceOut.filter(x=>x.shortfall).length,unmetHardDependencies:dependencyOut.filter(x=>x.hard&&!x.passed).length};
  if(constraints.length||resources.length||dependencies.length)run.notes.push("System dynamics layer applied "+constraints.length+" constraint(s), "+resources.length+" resource(s), and "+dependencies.length+" dependency record(s).");
  return run;
 }
