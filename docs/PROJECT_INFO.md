@@ -51,7 +51,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 - This is a software contract/prototype, not empirically validated behavioural, economic or cultural simulation.
 
 ## Important limitations / known gaps
-- Current actor-response inputs are simple effect strings; richer policies, beliefs, learning, negotiation and agent interaction remain future work.
+- Actor response policies now have editable behaviour labels, optional variable triggers, thresholds, response chances and recorded trigger outcomes. Goals, incentives, resources, constraints, information, attention, priority, risk tolerance and time pressure can be recorded, but only explicit trigger/effect rules currently influence the engine. Belief updating, learning, bargaining and empirically calibrated agent interaction remain future work.
 - Causal links are user-entered hypotheses. The model does not establish causality.
 - No calibrated distributions, real-time data, geographic database, legal database or cultural norms dataset are connected.
 - No Monte Carlo ensemble, sensitivity experiment suite or model calibration yet.
