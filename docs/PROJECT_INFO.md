@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (AI competition and human-AI interaction increment)
+Last updated: 2026-11-08 (Natural Language & Strategic Reasoning increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -165,3 +165,11 @@ Repaired malformed JavaScript in the main UI that prevented `app.js` from parsin
 - Remaining work: inspect actual browser/mobile layout and interactions, verify the hosting deployment, and collect repeated held-out observations before making any predictive-validity claim. No empirical predictive validity is claimed.
 
 - Latest contract verification in an isolated JavaScript harness: core 10/10, simulation/intelligence 115/115 and guided simulation 12/12. Main app, core, simulation and intelligence JavaScript syntax checks pass. These are not real browser/device or live-host tests.
+
+
+## Natural Language & Strategic Reasoning increment (2026-11-08)
+- Added `src/engines/reasoning.js`, a dependency-free local interpretation layer.
+- Guided situation workspace offers Interpret description: candidate themes, blind spots, modelling suggestions and questions. No records are silently created; review remains required.
+- Scenario Engine result details include STRATOS Reasoning: largest modelled movements, sensitivity drivers, applied actor rules, warnings and follow-up questions.
+- This is transparent heuristic text interpretation, not a connected large language model. No user data is sent to a cloud model. A real generative AI integration requires a secure server-side proxy/provider configuration; embedding a private API key in this static browser app would expose it.
+- Numeric simulation remains intact. Commentary is supplemental, not empirically validated forecasting.
