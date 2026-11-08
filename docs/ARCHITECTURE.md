@@ -113,3 +113,7 @@ Simulation runs can be saved in local browser storage and reopened or deleted fr
 - These tools are model-conditional heuristics. They do not establish causal proof, calibrated probabilities, complete coverage or empirical predictive validity. Existing actor learning, feedback, event shocks, causal links and scenario branches remain in place.
 - UI adds **System dynamics & strategic intelligence** and a prerequisite stage to **Your workflow**. Existing workspaces remain accessible.
 - Verification added to core and engine contract tests; real browser/device, accessibility, live deployment and empirical calibration remain separate verification tasks.
+
+
+## Optional generative reasoning service
+The static browser app can call a same-site Netlify Function at `/.netlify/functions/stratos-ai`. The function holds the OpenAI API key in server-side environment variables, accepts bounded model/run JSON, calls the Responses API with a strict structured-output schema, and returns interpretation or run-review commentary. The client has no provider key and retains local heuristic fallback. The service is optional and does not mutate canonical model state or simulation results. Browser-origin allowlisting and best-effort in-memory throttling are basic safeguards, not a substitute for durable authentication, abuse controls, or provider spend limits. User-provided model content is sent to OpenAI when AI analysis is requested; avoid including sensitive personal data.
