@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (human-response policy increment)
+Last updated: 2026-11-08 (actor decision drivers increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -51,7 +51,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 - This is a software contract/prototype, not empirically validated behavioural, economic or cultural simulation.
 
 ## Important limitations / known gaps
-- Actor response policies now have editable behaviour labels, optional variable triggers, thresholds, response chances and recorded trigger outcomes. Goals, incentives, resources, constraints, information, attention, priority, risk tolerance and time pressure can be recorded, but only explicit trigger/effect rules currently influence the engine. Belief updating, learning, bargaining and empirically calibrated agent interaction remain future work.
+- Actor response policies now have editable behaviour labels, optional variable triggers, thresholds, response chances and recorded trigger outcomes. Goals, incentives, resources, constraints, information, attention, priority, risk tolerance and time pressure can be recorded, but explicit trigger/effect rules and five user-entered numeric decision drivers now influence response propensity: goal alignment, incentive pressure, resource capacity, perceived risk relative to risk tolerance, and information confidence. These are transparent heuristics, not calibrated probabilities. Belief updating, learning, bargaining and empirically calibrated agent interaction remain future work.
 - Causal links are user-entered hypotheses. The model does not establish causality.
 - No calibrated distributions, real-time data, geographic database, legal database or cultural norms dataset are connected.
 - No Monte Carlo ensemble, sensitivity experiment suite or model calibration yet.
@@ -61,7 +61,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 ## Next implementation priorities
 1. Verify browser deployment and run both test pages.
 2. Expose simulation controls for fixed seed, event uncertainty, link delay and actor response chance.
-3. Expand policy mechanics so goals, incentives, information, resources, risk and attention influence responses through explicit, inspectable rules.
+3. Add actor learning and belief updates, negotiation/bargaining mechanics, and later calibrate decision rules against observed outcomes. Current numeric modifiers are transparent heuristics.
 4. Add event conditions, triggers, recurrence and event dependencies.
 5. Add scenario comparison across multiple seeds and uncertainty ranges (clearly labelled as sampled scenarios, not forecast probabilities).
 6. Add a feedback/observation loop: predicted signal, actual observation, error, model update and next experiment.
