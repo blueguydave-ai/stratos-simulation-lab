@@ -41,7 +41,7 @@ function enhance(model,run,options){
    if(linked&&r.exhaustionEffect!==undefined&&ratio<1){const effect=Number(r.exhaustionEffect)*(1-ratio);state[linked.id]=clamp(Number(state[linked.id]??5)+effect);}
    const effectMap=parseEffects(r.effects,variables),applied={};
    Object.entries(effectMap).forEach(([id,amount])=>{const actual=amount*(capacity?ratio:0);state[id]=clamp(Number(state[id]??5)+actual);applied[id]=Number(actual.toFixed(3));});
-   const recoverySteps=after>=capacity?0:replenishment>0?Math.ceil((capacity-after)/replenishment):null;resourceOut.push({id:r.id,name:r.name||"Resource",step,before,consumed:used,replenished:replenishment,after,capacity,utilization:capacity?Number((1-after/capacity).toFixed(3)):0,shortfall,recoverySteps,applied});
+   const recoverySteps=after>=capacity?0:replenishment>consumption?Math.ceil((capacity-after)/(replenishment-consumption)):null;resourceOut.push({id:r.id,name:r.name||"Resource",step,before,consumed:used,replenished:replenishment,after,capacity,utilization:capacity?Number((1-after/capacity).toFixed(3)):0,shortfall,recoverySteps,applied});
   });
   constraints.filter(c=>!c.disabled&&(Number(c.when)||1)<=step&&(c.until===undefined||c.until===""||step<=Number(c.until))).forEach(c=>{
    const trigger=variables.find(v=>v.id===c.triggerVariable),value=trigger?Number(state[trigger.id]??5):null,threshold=Number(c.triggerThreshold??5),op=c.triggerOperator||"gte";
