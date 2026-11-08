@@ -316,7 +316,7 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
        const policy=actor.policy||"custom";
        const cues={uncertainty:variables.some(v=>/uncertainty|information|trust|risk/i.test(v.name||"")&&clamp(levels[v.id])<4)?1:0,opportunity:variables.some(v=>/demand|interest|opportunity|growth/i.test(v.name||"")&&clamp(levels[v.id])>6)?1:0,competition:competitors.length?1:0,change:events.some(e=>Math.max(1,Number(e.when)||1)===t)?1:0};
        const action=chooseActorAction(actor,{cues,levels,step:t,chosen},rng);
-       const responseDescription=action.label;
+       const responseDescription=responded?action.label:"Did not act; considered: "+action.label;
        const hasEffects=Object.keys(effects).length>0;
        const automaticEffects=responded?actionVariableEffects(action.id,variables,levels):{};
        const explicitEffects={};
