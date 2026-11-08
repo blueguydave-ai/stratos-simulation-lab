@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>STRATOS engine tests</title></head>
+<body style="font:16px system-ui;max-width:900px;margin:40px auto;padding:0 18px"><h1>STRATOS simulation engine checks</h1><p>These are deterministic contract tests, not evidence that the model predicts real people or markets.</p><pre id="results">Running…</pre>
+<script src="../src/core/model.js"></script><script src="../src/engines/simulation.js"></script><script>
+const out=[];function test(name,fn){try{if(fn()!==true)throw Error("Assertion returned false");out.push("PASS  "+name)}catch(e){out.push("FAIL  "+name+" — "+e.message)}}
+const m=STRATOSCore.freshModel();m.variables=[{id:"v1",name:"Demand",level:5,low:2,high:8,importance:8,direction:"positive",confidence:"high",evidenceStatus:"estimated"},{id:"v2",name:"Revenue",level:5,low:2,high:8,importance:9,direction:"positive",confidence:"medium",evidenceStatus:"assumption"}];m.links=[{id:"l1",from:"v1",to:"v2",sign:"positive",strength:2}];
+test("same seed produces same state",()=>JSON.stringify(STRATOSSimulation.simulate(m,{seed:"repeat"}).finalLevels)===JSON.stringify(STRATOSSimulation.simulate(m,{seed:"repeat"}).finalLevels));
+test("different seed does not corrupt model state",()=>{STRATOSSimulation.simulate(m,{seed:"a"});return m.variables[0].level===5&&m.variables[1].level===5});
+test("strategy direct effects are applied",()=>{m.decisions=[{id:"d1",name:"Improve demand",effectText:"v1:+2"}];return STRATOSSimulation.simulate(m,{decisionId:"d1",seed:"strategy"}).finalLevels.v1>5});
+test("confirmed event applies at its scheduled step",()=>{m.events=[{id:"e1",name:"Confirmed event",when:2,status:"confirmed",likelihood:"unknown",effects:{v1:2}}];const r=STRATOSSimulation.simulate(m,{steps:3,seed:"event"});return r.timeline[0].levels.v1===5&&r.timeline[1].levels.v1>5});
+test("unknown events can be excluded",()=>{m.events=[{id:"e2",name:"Unknown",when:1,status:"possible",likelihood:"unknown",effects:{v1:2}}];return STRATOSSimulation.simulate(m,{seed:"excluded",includeUncertain:false}).finalLevels.v1===5});
+test("delayed causal effects are reported",()=>{m.events=[];m.links=[{id:"l2",from:"v1",to:"v2",sign:"positive",strength:2,delay:2}];return STRATOSSimulation.simulate(m,{steps:3,seed:"delay"}).warnings.some(x=>x.includes("Delayed causal"))});
+document.querySelector("#results").textContent=out.join("\n")+"\n\n"+out.filter(x=>x.startsWith("PASS")).length+"/"+out.length+" checks passed.";
+</script></body></html>
