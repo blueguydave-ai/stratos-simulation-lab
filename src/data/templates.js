@@ -245,7 +245,31 @@ const searchAliases={
 "Career transition":"job search promotion reskilling occupation profession unemployment",
 "Personal goal execution":"habit productivity discipline attention personal project execution",
 "Cross-border market entry":"international expansion export import foreign market localization",
-"Cross-cultural collaboration":"multilingual remote distributed teams intercultural communication"
+"Cross-cultural collaboration":"multilingual remote distributed teams intercultural communication",
+"Admissions / scholarship competition":"student applicant university college financial aid bursary grant",
+"Student organization / club governance":"student union campus society association club events",
+"Academic performance / exam preparation":"student studying learning revision tests grades examination",
+"School administration / parent engagement":"school teacher parent guardian pupils attendance",
+"Healthcare clinic operations":"hospital clinic doctor nurse appointment patient care",
+"Patient access / care navigation":"patient referral clinic health service eligibility appointment",
+"Startup fundraising / investor relations":"venture capital angel investor pitch deck funding",
+"Investment committee / portfolio allocation":"asset allocation stocks bonds investment fund portfolio",
+"Supplier qualification / vendor risk":"supplier audit vendor due diligence certification",
+"Intellectual property / rights clearance":"copyright trademark licensing royalties music rights",
+"Music release / artist campaign":"musician single album streaming distributor promotion",
+"Landlord / tenant property management":"rental lease tenancy rent maintenance property manager",
+"Agriculture / farm production operations":"farmer crop livestock harvest irrigation agriculture",
+"Emergency response / incident command":"fire ambulance disaster rescue crisis emergency",
+"Import / export trade operations":"customs shipping international trade tariff import export",
+"Personal finance / debt management":"budget savings debt loan household money",
+"Gaming / interactive entertainment launch":"video game studio game launch players esports",
+"Podcast / audio show growth":"podcast host audio episodes listeners subscribers",
+"Fraud / scam response and prevention":"scam phishing impersonation fraud victim report",
+"Business cash flow / treasury management":"working capital liquidity receivables payables cash",
+"Construction project delivery":"building contractor civil engineering site works",
+"Transport / mobility network planning":"public transit bus rail traffic roads mobility",
+"Contract compliance / audit readiness":"audit controls compliance obligations evidence",
+"Online course / cohort programme delivery":"student online learning cohort instructor course completion"
 };
 const baseEntries=variants.map((v,i)=>({id:String(i),category:packs[v.packIndex][0],subcategory:packs[v.packIndex][1],name:contextName(v),description:packs[v.packIndex][2]+". "+v.stage[1]+" "+v.stakeholders[1]+" "+v.environment[1]+" "+v.pressure[1],stage:v.stage[0],stakeholders:v.stakeholders[0],environment:v.environment[0],pressure:v.pressure[0],searchText:(packs[v.packIndex][2]+" "+packs[v.packIndex][5]+" "+packs[v.packIndex][7]).toLowerCase()}));
 function list(filters={}){let out=baseEntries;if(filters.category)out=out.filter(x=>x.category===filters.category);if(filters.subcategory)out=out.filter(x=>x.subcategory===filters.subcategory);if(filters.query){const terms=String(filters.query).toLowerCase().trim().split(/\s+/).filter(Boolean);out=out.filter(x=>{const hay=(x.name+" "+x.description+" "+x.category+" "+x.subcategory+" "+x.searchText+" "+(searchAliases[x.subcategory]||"")).toLowerCase();return terms.every(term=>hay.includes(term));});}return filters.limit?out.slice(0,filters.limit):out;}
