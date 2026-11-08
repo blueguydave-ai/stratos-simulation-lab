@@ -57,6 +57,26 @@
       if(x.level!==undefined&&(!Number.isFinite(level)||level<0||level>10))errors.push({code:"variable.level",path:"variables["+i+"]",message:"Current level must be a number from 0 to 10."});
       if(x.evidenceStatus==="unknown"||x.confidence==="low")warnings.push({code:"evidence.weak",path:"variables["+i+"]",message:"Unknown or low-confidence variable: test sensitivity to it."});
     });
+    records("constraints").forEach((x,i)=>{
+      if(!x||typeof x!=="object")return;
+      if(x.triggerVariable&&!variableIds.has(x.triggerVariable))warnings.push({code:"constraint.trigger_missing",path:"constraints["+i+"]",message:"Constraint activation references a missing variable."});
+      if(x.targetVariable&&!variableIds.has(x.targetVariable))errors.push({code:"constraint.target_missing",path:"constraints["+i+"]",message:"Constraint cap references a missing variable."});
+      if(x.until!==undefined&&x.until!==""&&Number(x.until)<Number(x.when||1))errors.push({code:"constraint.duration",path:"constraints["+i+"]",message:"Constraint end step cannot precede its start step."});
+      if(x.severity!==undefined&&(!Number.isFinite(Number(x.severity))||Number(x.severity)<0||Number(x.severity)>10))errors.push({code:"constraint.severity",path:"constraints["+i+"]",message:"Constraint severity must be from 0 to 10."});
+    });
+    records("resources").forEach((x,i)=>{
+      if(!x||typeof x!=="object")return;
+      if(x.linkedVariableId&&!variableIds.has(x.linkedVariableId))warnings.push({code:"resource.variable_missing",path:"resources["+i+"]",message:"Resource depletion references a missing variable."});
+      ["initial","capacity","consumptionPerStep","replenishmentPerStep"].forEach(k=>{if(x[k]!==undefined&&(!Number.isFinite(Number(x[k]))||Number(x[k])<0))errors.push({code:"resource.number",path:"resources["+i+"]."+k,message:"Resource quantities must be non-negative numbers."});});
+      if(x.initial!==undefined&&x.capacity!==undefined&&Number(x.initial)>Number(x.capacity))errors.push({code:"resource.capacity",path:"resources["+i+"]",message:"Starting resource amount cannot exceed capacity."});
+    });
+    records("dependencies").forEach((x,i)=>{
+      if(!x||typeof x!=="object")return;
+      if(!String(x.fromId||"").trim())errors.push({code:"dependency.source_missing",path:"dependencies["+i+"]",message:"Dependency needs a source record ID."});
+      const sourceCollection=({variable:"variables",resource:"resources",actor:"actors",constraint:"constraints"})[x.fromType];
+      if(sourceCollection&&!records(sourceCollection).some(r=>r&&r.id===x.fromId))warnings.push({code:"dependency.dangling",path:"dependencies["+i+"]",message:"Dependency source does not match a record in the selected collection."});
+      if(x.requiredBy&&!records("decisions").some(r=>r&&r.id===x.requiredBy))warnings.push({code:"dependency.strategy_missing",path:"dependencies["+i+"]",message:"Dependency refers to a strategy that is not present."});
+    });
     records("communications").forEach((x,i)=>{
       if(!x||typeof x!=="object")return;
       if(x.senderId&&!actorIds.has(x.senderId))warnings.push({code:"communication.sender_missing",path:"communications["+i+"]",message:"Message sender is not a registered actor."});
