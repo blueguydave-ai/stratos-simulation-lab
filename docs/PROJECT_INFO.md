@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (markets and competition increment)
+Last updated: 2026-11-08 (behavioural decision-context increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -103,3 +103,7 @@ Added `journeys` and `journeyPoints` collections and a Buyer Journeys workspace 
 
 ### Negotiation and multi-party purchasing
 Added `negotiations` and `negotiationParties` collections and a Negotiation & multi-party decisions workspace within Markets. Negotiations define schedule, opening/target offer, bargaining rounds, concession rate, optional linked outcome variable and explicit success/failure effects. Participants are buyers, sellers, approvers, gatekeepers, advisers or other parties. Their authority, willingness, ability, bargaining power, reservation values, minimum thresholds, required status and walk-away threshold are separately editable. Engine output shows reservation overlap, required-party readiness, round-by-round offer movement, agreement status and applied effects. Numeric offer/reservation values share a user-defined scale; no currency conversion, hidden motives or calibrated agreement probability is inferred. Six engine checks added. Browser execution remains outstanding.
+
+
+### Behavioural responses, objections and decision context
+Actor editor now captures contextual loss sensitivity, status-quo preference, cognitive load, urgency, visible social-proof signal and skepticism. These contribute separate transparent modifiers to response propensity, with loss sensitivity interacting with perceived risk. Actors can also record objections, public position, privately reported belief, observable constraint and actual observed action as distinct fields. The engine reports these fields alongside the response outcome and does not assume an objection has been resolved. Six contract tests were added for directional effects, context separation, boundedness and reproducibility. These are provisional heuristics, not validated psychology or universal cultural rules. Browser execution remains outstanding.
