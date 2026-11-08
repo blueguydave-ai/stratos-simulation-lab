@@ -153,3 +153,12 @@ Repaired malformed JavaScript in the main UI that prevented `app.js` from parsin
 - Simulation execution now checks structural model errors before calling the engine and displays a readable error instead of attempting to run malformed records. Model validation now handles null/malformed records safely and checks variable bounds and selected reference fields.
 - Added `tests/guidance.test.html` and expanded core tests. Latest isolated test harness: core 7/7, simulation engine 92/92, guidance 10/10. JavaScript syntax checks pass for `app.js`, core model, guidance module and simulation engine.
 - Verification boundary: these are isolated JavaScript contract/syntax tests executed against the repository source. They are not a real browser, iPhone, accessibility, visual-layout or end-to-end interaction test. Deployment must still be checked on the live hosting URL.
+
+## System dynamics and strategic intelligence increment (2026-11-08)
+- Added model schema v4 collections: `constraints`, `resources`, and `dependencies`. Older saved models normalize with empty arrays; their existing data remains intact.
+- Added `src/engines/intelligence.js`, loaded after the deterministic simulation engine. It applies constraint windows/triggers, hard variable caps, severity-scaled soft effects, resource stock consumption/replenishment, depletion effects, and prerequisite checks over the simulation timeline. Enhanced state changes carry forward between steps.
+- Added the **System dynamics & strategic intelligence** workspace with editable records for constraints, resources and prerequisites; diagnostics for leverage candidates, bottlenecks, missing considerations, second-order paths and possible direct unintended effects.
+- Added controlled one-input experiments (variable/resource/constraint toggle) and one-at-a-time variable sensitivity comparisons. These compare model outputs under entered assumptions; they are not causal proof or calibrated forecasts.
+- The guided workflow now includes a required modelling stage for constraints, resources and dependencies.
+- Added validation for malformed resource quantities, capacity inconsistencies, missing constraint references and dangling dependency references. Expanded core and engine tests.
+- Remaining work: inspect actual browser/mobile layout and interactions, run all tests in the live browser, verify the hosting deployment, and implement observed-versus-simulated calibration with a clearly defined observed-data schema. No empirical predictive validity is claimed.
