@@ -40,6 +40,7 @@ function analyze(model){
  if(contains(domain,["institution","education","campus","organization","government"])) {
   if(!count(m,"institutions"))add("institutions","Add formal rules and informal constraints","Procedures, authority, enforcement, infrastructure and local practice can change what actions are possible.","Record the exact rule or process, scope, affected actors, exceptions, enforcement, start time and source/date. Distinguish written policy from observed practice.","institutions","essential","Add constraints");
  }
+ if(contains(domain,["cross-cultural","cultural"]))if(!has(s.social))add("cultural-context","Describe the specific local and subgroup context","A country or cultural label cannot predict how an individual or group behaves.","Define the exact setting, subgroup, language, institution and interaction. Record observed practices, variation, exceptions, source, date and counterexamples. Do not generalise from identity labels.","situation","essential","Add local context");
  if(contains(domain,["technology","ai","automation"])) {
   if(!count(m,"aiSystems"))add("ai-systems","Represent relevant AI or automated systems","Automated recommendations, screening and agents can shape access, information and decisions.","Record operator, purpose, affected actors, adoption, reliability, oversight, data access, bias, failure modes, dependencies and explicit effects.","actors","recommended","Add AI system");
   if(!count(m,"aiEvents"))add("ai-events","Test AI interactions and failure scenarios","System-level effects may arise from competition, outages, automation races or human-AI coordination.","Add normal operation, misuse, outage, security incident, escalation and fallback cases. Define separate success and failure effects and human oversight.","actors","recommended","Add AI interaction");
@@ -55,7 +56,9 @@ function analyze(model){
   negotiation:["Who has authority to commit, and who can veto?","What are each party's alternatives and walk-away conditions?","Which terms are negotiable, conditional or non-negotiable?"],
   relationships:["What was directly said or done, and what is interpretation?","What alternative explanations fit the same evidence?","What boundaries, obligations and power differences matter?"],
   institution:["Which written rule applies, and who enforces it in practice?","What exceptions, appeals and informal processes exist?","Which claims need local confirmation from an authoritative source?"],
-  technology:["Who owns, operates and can override the system?","What happens during errors, outages, adversarial use or low-quality inputs?","Who benefits, who bears risk and what human fallback exists?"]
+  technology:["Who owns, operates and can override the system?","What happens during errors, outages, adversarial use or low-quality inputs?","Who benefits, who bears risk and what human fallback exists?"],
+  brokerage:["Who controls access to each side, and what proves their authority?","When is the intermediary entitled to a fee or commission?","Who carries the risk if one party delays, misrepresents or fails to perform?"],
+  "cross-cultural":["Which specific setting, subgroup and language are in scope?","What source, date and sample support each claim about local norms?","What within-group variation, exceptions and alternative interpretations matter?"]
  };
  const questions=domainQuestions[domain]||["What important actor, constraint or alternative is missing?","Which assumption would most change the decision if it were wrong?","What is the earliest observable signal that the strategy is working or failing?"];
  const checks=[
