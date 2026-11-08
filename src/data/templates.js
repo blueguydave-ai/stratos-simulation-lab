@@ -315,7 +315,9 @@ function semanticSearch(query,filters={}){
   const reasons=[];if(exact.length)reasons.push("Matches your wording: "+exact.slice(0,4).join(", "));if(phraseHits.length)reasons.push(...phraseHits);if(matched.length)reasons.push("Related ideas: "+matched.slice(0,5).join(", "));
   return {...item,matchScore:score,matchReasons:reasons};
  }).filter(x=>x.matchScore>0).sort((a,b)=>b.matchScore-a.matchScore||a.name.localeCompare(b.name));
- return filters.limit?scored.slice(0,filters.limit):scored;
+ const buckets=new Map();scored.forEach(item=>{const key=item.category+"::"+item.subcategory;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(item);});
+ const diversified=[];let round=0,remaining=true;while(remaining){remaining=false;for(const bucket of buckets.values()){if(bucket[round]){diversified.push(bucket[round]);remaining=true;}}round++;}
+ return filters.limit?diversified.slice(0,filters.limit):diversified;
 }
 function list(filters={}){if(filters.query)return semanticSearch(filters.query,filters);let out=baseEntries;if(filters.category)out=out.filter(x=>x.category===filters.category);if(filters.subcategory)out=out.filter(x=>x.subcategory===filters.subcategory);return filters.limit?out.slice(0,filters.limit):out;}
 root.STRATOSTemplates=Object.freeze({list,semanticSearch,build:(index,geo={},chosen={})=>detailedBuild(index,geo,chosen),count:variants.length,categories:[...new Set(packs.map(p=>p[0]))],subcategories:packs.map(p=>({category:p[0],name:p[1]})),dimensions,combinationCount,catalogueCount,readyMadeCount:variants.length,formatCount:n=>Number(n).toLocaleString("en-US")});
