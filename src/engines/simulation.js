@@ -263,7 +263,6 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
    if(chosen){
      actors.forEach(actor=>{
        const effects=parseEffects(actor.responseEffects,variables);
-       if(!Object.keys(effects).length)return;
        const triggerId=actor.triggerVariable||"";
        const observed=triggerId?(actorBeliefs[actor.id]?.[triggerId]??5):undefined;
        const threshold=Number(actor.triggerThreshold??5);
@@ -283,10 +282,14 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
        const adjustment=Object.values(modifiers).reduce((sum,value)=>sum+value,0);
        const chance=Math.max(0,Math.min(1,baseChance+adjustment));
        const responded=rng()<chance;
-       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,decisionContext:{objections:String(actor.objections||""),publicPosition:String(actor.publicPosition||""),privateBelief:String(actor.privateBelief||""),observableConstraint:String(actor.observableConstraint||""),actualAction:String(actor.actualAction||"")},triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null,powerLinks:powerLinks.map(link=>link.id),powerModifier,institutionalModifier,reputationScore,reputationModifier,activeInstitutionIds:activeInstitutions.map(rule=>rule.id),aiSystemIds:aiSystemsForActor.map(ai=>ai.id),aiModifier});
+       const policy=actor.policy||"custom";
+       const policyActions={cooperate:"Cooperated or supported the proposed action",compete:"Competed or pursued an alternative",resist:"Resisted or challenged the proposed action",delay:"Delayed or waited before acting",withdraw:"Withdrew or disengaged",negotiate:"Negotiated or requested different terms",adapt:"Adapted their approach",custom:"No specific response action was defined"};
+       const responseDescription=String(actor.behaviour||"").trim()||String(actor.publicPosition||"").trim()||policyActions[policy]||policyActions.custom;
+       const hasEffects=Object.keys(effects).length>0;
+       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy,triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,responseDescription,responseBasis:actor.behaviour?"Entered plausible behaviour":actor.publicPosition?"Entered public position":policy!=="custom"?"Selected response policy":"Illustrative default response chance; action not specified",effectApplied:responded&&hasEffects,decisionContext:{objections:String(actor.objections||""),publicPosition:String(actor.publicPosition||""),privateBelief:String(actor.privateBelief||""),observableConstraint:String(actor.observableConstraint||""),actualAction:String(actor.actualAction||"")},triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null,powerLinks:powerLinks.map(link=>link.id),powerModifier,institutionalModifier,reputationScore,reputationModifier,activeInstitutionIds:activeInstitutions.map(rule=>rule.id),aiSystemIds:aiSystemsForActor.map(ai=>ai.id),aiModifier});
        if(responded){
          Object.entries(effects).forEach(([k,v])=>{levels[k]=clamp(levels[k]+v*.45);});
-         stepNotes.push("Actor policy response ("+(actor.policy||"custom")+"): "+actor.name);
+         stepNotes.push("Actor response ("+policy+"): "+actor.name);
        }
      });
    }
