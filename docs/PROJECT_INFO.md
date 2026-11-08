@@ -27,7 +27,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 - Current source is plain JavaScript, HTML and CSS. New modules are framework-free browser scripts loaded by index.html.
 - No runtime or deployment success should be claimed without actually testing it in a browser.
 
-## Current architecture
+## Dependency-led user workflow (added 2026-11-08)\n- The first workspace is now **Your workflow**, a guided sequence that computes stage status from the current model and recommends the next useful action.\n- Sequence: situation → actors → variables/causal links → relevant context (optional) → events/uncertainty (optional) → strategies → evidence/feedback → model-quality review → scenario simulation.\n- Essential preparation progress tracks situation, actors, system map, strategies and evidence/completed feedback tests. Context and events are explicitly optional; users can jump to any workspace.\n- Completion indicators mean records exist, not that assumptions are true or the model is realistic. The workflow does not hard-lock later workspaces.\n\n## Current architecture
 - `index.html`: loads core, validation, domain registry, simulation engine and app shell.
 - `app.js`: current user interface, forms, local persistence, export/import and legacy scenario presentation.
 - `styles.css`: interface styling.
