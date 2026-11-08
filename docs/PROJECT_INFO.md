@@ -222,3 +222,11 @@ Each context builds the complete STRATOS model structure, with starter actors, v
 - This is a combinatorial design space, not 200 million independently authored, researched or empirically validated scenarios. The template library is a starting point; users must verify and refine assumptions.
 - UI supports domain, context family and text search plus six refinement selectors. Results show up to 150 base contexts at a time; search/filter narrows the list.
 - Validation still needed in a real browser: mobile layout, selector behaviour, apply/merge, model persistence, and end-to-end deployment.
+
+
+### Template catalogue verification
+- Added keyword aliases for practical discovery (for example procurement/vendor/RFP, property/landlord, music sync/licensing, student/hostel and visa/application).
+- Search supports multiple terms and requires all query terms to match the context or its aliases. The base catalogue remains compact; the six refinement selectors generate the selected combination.
+- Runtime checks confirmed 5,000 base entries, 40,000 refinements per base entry and 200,000,000 combinations. Sampled model builds include all six selected dimensions.
+- All 5,000 generated base templates passed the current model validator (0 invalid). App JavaScript syntax check passed; model normalization passed.
+- Not yet verified: live browser rendering, touch/mobile usability, full apply/merge workflow, localStorage persistence or the latest hosted deployment.
