@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08
+Last updated: 2026-11-08 (human-response policy increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -45,7 +45,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 - Applies explicitly entered strategy effects.
 - Samples event occurrence using a seeded pseudo-random generator; a fixed seed makes a run repeatable.
 - Applies explicitly entered actor response effects with a response chance. It does not infer actual human intentions.
-- Supports causal-link delays through a `delay` field; current UI may not yet expose every engine field.
+- Supports causal-link delays through a `delay` field. Each delayed link is now scheduled once per step from the source state at that step, not once per propagation round.
 - Returns a timeline, state snapshots, event outcomes, actor response outcomes, warnings and an indicative alignment score.
 - The score and uncertainty band are heuristic, not probabilities or calibrated statistical intervals.
 - This is a software contract/prototype, not empirically validated behavioural, economic or cultural simulation.
@@ -61,7 +61,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 ## Next implementation priorities
 1. Verify browser deployment and run both test pages.
 2. Expose simulation controls for fixed seed, event uncertainty, link delay and actor response chance.
-3. Add richer actor response policies: cooperate, compete, delay, withdraw, negotiate, adapt; each must be editable and evidence-labelled.
+3. Expand policy mechanics so goals, incentives, information, resources, risk and attention influence responses through explicit, inspectable rules.
 4. Add event conditions, triggers, recurrence and event dependencies.
 5. Add scenario comparison across multiple seeds and uncertainty ranges (clearly labelled as sampled scenarios, not forecast probabilities).
 6. Add a feedback/observation loop: predicted signal, actual observation, error, model update and next experiment.
