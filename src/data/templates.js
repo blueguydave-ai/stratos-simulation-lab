@@ -182,7 +182,13 @@ const dimensions={
 };
 const combinationCount=Object.values(dimensions).reduce((n,d)=>n*d.values.length,1);
 const catalogueCount=variants.length*combinationCount;
-function contextName(v){return packs[v.packIndex][1]+" — "+v.stage[0]+" · "+v.stakeholders[0]+" · "+v.environment[0]+" · "+v.pressure[0]}
+function contextName(v){
+ const stage={"Early discovery":"Just starting out","Initial launch":"Launching for the first time","Growth and scaling":"Growing or expanding","Established operation":"Already up and running","Decline or disruption":"Facing a setback or major change"}[v.stage[0]]||v.stage[0];
+ const people={"Solo decision-maker":"One main decision-maker","Buyer and seller":"Two sides making a deal","Multi-party coalition":"Several people who must agree","Group and network":"A group whose members influence one another","Institution and gatekeepers":"An organization with approval steps"}[v.stakeholders[0]]||v.stakeholders[0];
+ const setting={"Physical / local":"In person / local","Digital / platform-mediated":"Online / platform","Hybrid / omnichannel":"Both online and in person","Regulated / institution-led":"Formal rules or approvals apply","Cross-border / distributed":"Across places or countries"}[v.environment[0]]||v.environment[0];
+ const pressure={"Resource-constrained":"Limited money, time or people","Time-critical":"Urgent deadline","High uncertainty":"Important things are still unknown","Competitive / contested":"Competition or opposition"}[v.pressure[0]]||v.pressure[0];
+ return packs[v.packIndex][1]+" — "+stage+" · "+people+" · "+setting+" · "+pressure;
+}
 function detailedBuild(index,geo={},chosen={}){
  const v=variants[Number(index)];if(!v)return null;
  const p=packs[v.packIndex],model=build(p,geo);
