@@ -161,4 +161,7 @@ Repaired malformed JavaScript in the main UI that prevented `app.js` from parsin
 - Added controlled one-input experiments (variable/resource/constraint toggle) and one-at-a-time variable sensitivity comparisons. These compare model outputs under entered assumptions; they are not causal proof or calibrated forecasts.
 - The guided workflow now includes a required modelling stage for constraints, resources and dependencies.
 - Added validation for malformed resource quantities, capacity inconsistencies, missing constraint references and dangling dependency references. Expanded core and engine tests.
-- Remaining work: inspect actual browser/mobile layout and interactions, run all tests in the live browser, verify the hosting deployment, and implement observed-versus-simulated calibration with a clearly defined observed-data schema. No empirical predictive validity is claimed.
+- Added observed-versus-simulated calibration comparisons for entered variable observations, with source/date provenance and mean absolute error. Added feedback-loop detection, competing incoming-cause summaries, one-step indirect-effect warnings and resource recovery-time estimates based on net replenishment. Calibration is descriptive and not proof of predictive validity.
+- Remaining work: inspect actual browser/mobile layout and interactions, verify the hosting deployment, and collect repeated held-out observations before making any predictive-validity claim. No empirical predictive validity is claimed.
+
+- Latest system-dynamics contract verification in an isolated JavaScript harness: core 10/10 and simulation/intelligence 105/105. Main app, core, simulation and intelligence JavaScript syntax checks pass. These are not real browser/device or live-host tests.
