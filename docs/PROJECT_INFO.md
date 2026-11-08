@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (behavioural decision-context increment)
+Last updated: 2026-11-08 (decision interaction lifecycle increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -107,3 +107,7 @@ Added `negotiations` and `negotiationParties` collections and a Negotiation & mu
 
 ### Behavioural responses, objections and decision context
 Actor editor now captures contextual loss sensitivity, status-quo preference, cognitive load, urgency, visible social-proof signal and skepticism. These contribute separate transparent modifiers to response propensity, with loss sensitivity interacting with perceived risk. Actors can also record objections, public position, privately reported belief, observable constraint and actual observed action as distinct fields. The engine reports these fields alongside the response outcome and does not assume an objection has been resolved. Six contract tests were added for directional effects, context separation, boundedness and reproducibility. These are provisional heuristics, not validated psychology or universal cultural rules. Browser execution remains outstanding.
+
+
+### Decision delays, objection lifecycle and counteroffers
+Added a `decisionInteractions` collection with actor, linked negotiation, action type, initial step, additional delay, objection and manually assessed objection status, response/evidence, optional offer value, explicit variable effects and notes. Supported actions include hesitation/defer, request evidence, raise objection, counteroffer, partial acceptance, withdraw and return. Delayed actions occur only at their scheduled step. Counteroffers update the linked negotiation opening offer; withdrawal suspends its scheduled negotiation and return reopens it. Objections are never automatically resolved. Five engine contract tests were added. Browser execution remains outstanding.
