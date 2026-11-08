@@ -270,7 +270,7 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
        const triggered=!triggerId||observed===undefined||
          (op==="gte"&&observed>=threshold)||(op==="lte"&&observed<=threshold)||
          (op==="gt"&&observed>threshold)||(op==="lt"&&observed<threshold);
-       if(!triggered){actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:false,responded:false,probability:0});return;}
+       if(!triggered){actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:false,responded:false,probability:0,responseDescription:String(actor.behaviour||actor.publicPosition||"No response action was specified"),responseBasis:"The actor's trigger condition was not met",effectApplied:false});return;}
        const baseChance=Math.max(0,Math.min(1,Number(actor.responseChance??45)/100));
        // Explicit user-entered drivers; transparent heuristics, not learned psychology.
        const powerLinks=chosen.actorId?powerRelations.filter(link=>link.holderActorId===chosen.actorId&&link.dependentActorId===actor.id&&link.active!==false):[];
