@@ -17,6 +17,8 @@
     const model={...base,...source, schemaVersion:VERSION, version:VERSION};
     model.meta={...base.meta,...(source.meta||{})};
     model.situation={...base.situation,...(source.situation||{})};
+    // Legacy templates used until: 0 to mean "ongoing". Normalize saved models too.
+    model.constraints.forEach(item=>{if(item&&typeof item==="object"&&Number(item.until)===0)item.until="";});
     COLLECTIONS.forEach(k=>{model[k]=Array.isArray(source[k])?source[k]:[];});
     model.scenarioOverrides={...base.scenarioOverrides,...(source.scenarioOverrides||{})};
     Object.keys(base.scenarioOverrides).forEach(k=>{model.scenarioOverrides[k]={...(model.scenarioOverrides[k]||{})};});
