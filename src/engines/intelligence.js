@@ -25,8 +25,10 @@ function enhance(model,run,options){
  const timeline=(run.timeline||[]).map(x=>({...x,levels:{...(x.levels||{})}}));
  let previousBase=null,previousEnhanced=null;
  const chosen=list(m,"decisions").find(x=>x.id===run.decision);
- const dependencyAtStart=dependencyStatus(m,1,levels,resources.map(r=>({...r,level:resourceState[r.id]})));
- const blocked=dependencyAtStart.filter(x=>x.hard&&!x.passed&&(!x.requiredBy||x.requiredBy===run.decision));
+ const initialLevels={};variables.forEach(v=>initialLevels[v.id]=clamp(v.level??5));
+ const dependencyAtStart=dependencyStatus(m,1,initialLevels,resources.map(r=>({...r,level:resourceState[r.id]})));
+ const blocked=run._blockedPrerequisites||dependencyAtStart.filter(x=>x.hard&&!x.passed&&(!x.requiredBy||x.requiredBy===run.decision));
+ delete run._blockedPrerequisites;
  if(blocked.length){run.warnings.push("Strategy blocked by unmet hard prerequisite(s): "+blocked.map(x=>x.name).join(", ")+". Direct strategy effects were suppressed; actor and environmental dynamics still run.");run.blockedPrerequisites=blocked;}
  timeline.forEach((snap,index)=>{
   const step=snap.step||index+1, baseState={...snap.levels};
@@ -101,7 +103,7 @@ root.STRATOSSimulation=Object.freeze({...root.STRATOSSimulation,simulate:functio
  const stocks=list(model,"resources").map(r=>({...r,level:Number(r.initial??r.level??r.capacity??0)}));
  const blocked=chosen?dependencyStatus(model,1,initial,stocks).filter(x=>x.hard&&!x.passed&&(!x.requiredBy||x.requiredBy===chosen.id)):[];
  let run;
- if(blocked.length){const shadow={...model,decisions:list(model,"decisions").map(d=>d.id===chosen.id?{...d,effectText:""}:d)};run=baseSimulate(shadow,opts);}
+ if(blocked.length){const shadow={...model,decisions:list(model,"decisions").map(d=>d.id===chosen.id?{...d,effectText:""}:d)};run=baseSimulate(shadow,opts);run._blockedPrerequisites=blocked;}
  else run=baseSimulate(model,opts);
  return enhance(model,run,opts);
 },analyze,runExperiment,sensitivity,calibrate,enhance});
