@@ -1,6 +1,6 @@
 (function(root) {
   "use strict";
-  const ENDPOINT = "/.netlify/functions/stratos-ai";
+  const ENDPOINT = "/api/stratos-ai";
   const ACCESS_KEY = "stratos-ai-access-code";
   async function analyze(model, task, run, allowPrompt = true) {
     const headers = { "content-type": "application/json" };
