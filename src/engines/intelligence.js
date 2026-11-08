@@ -34,14 +34,18 @@ function enhance(model,run,options){
   const step=snap.step||index+1, baseState={...snap.levels};
   const state=previousBase&&previousEnhanced?Object.fromEntries(Object.keys(baseState).map(id=>[id,clamp(Number(previousEnhanced[id]??baseState[id])+Number(baseState[id])-Number(previousBase[id]??baseState[id]))])):{...baseState};
   resources.forEach(r=>{
-   const before=resourceState[r.id],capacity=Math.max(0,Number(r.capacity??r.initial??r.level??10)),consumption=Math.max(0,Number(r.consumptionPerStep??0)),replenishment=Math.max(0,Number(r.replenishmentPerStep??0));
-   const used=Math.min(before,consumption),after=Math.min(capacity,Math.max(0,before-used+replenishment));resourceState[r.id]=after;
-   const ratio=capacity>0?after/capacity:0,shortfall=consumption>before;
-   const linked=variables.find(v=>v.id===r.linkedVariableId);
+   const before=resourceState[r.id],baseCapacity=Math.max(0,Number(r.capacity??r.initial??r.level??10)),capacity=baseCapacity+Math.max(0,Number(r.capacityGrowthPerStep)||0)*(step-1),replenishment=Math.max(0,Number(r.replenishmentPerStep??0));
+   const claims=String(r.allocationClaims||"").split(/[;,\\n]+/).map(part=>{const p=part.trim().split(":");return p.length>=2?{actorId:p[0].trim(),requested:Math.max(0,Number(p[1])||0),priority:Number(p[2])||0}:null;}).filter(x=>x&&x.actorId&&x.requested>0);
+   const requested=claims.length?claims.reduce((n,x)=>n+x.requested,0):Math.max(0,Number(r.consumptionPerStep??0)),used=Math.min(before,requested),shortfall=requested>before;
+   let allocations=[];
+   if(claims.length){if(r.allocationMode==="priority"){let remaining=used;claims.slice().sort((a,b)=>b.priority-a.priority).forEach(c=>{const amount=Math.min(remaining,c.requested);allocations.push({actorId:c.actorId,requested:c.requested,allocated:amount,priority:c.priority});remaining-=amount;});}else allocations=claims.map(c=>({actorId:c.actorId,requested:c.requested,allocated:requested?used*c.requested/requested:0,priority:c.priority}));}
+   const after=Math.min(capacity,Math.max(0,before-used+replenishment));resourceState[r.id]=after;
+   const ratio=capacity>0?after/capacity:0,linked=variables.find(v=>v.id===r.linkedVariableId);
    if(linked&&r.exhaustionEffect!==undefined&&ratio<1){const effect=Number(r.exhaustionEffect)*(1-ratio);state[linked.id]=clamp(Number(state[linked.id]??5)+effect);}
    const effectMap=parseEffects(r.effects,variables),applied={};
    Object.entries(effectMap).forEach(([id,amount])=>{const actual=amount*(capacity?ratio:0);state[id]=clamp(Number(state[id]??5)+actual);applied[id]=Number(actual.toFixed(3));});
-   const recoverySteps=after>=capacity?0:replenishment>consumption?Math.ceil((capacity-after)/(replenishment-consumption)):null;resourceOut.push({id:r.id,name:r.name||"Resource",step,before,consumed:used,replenished:replenishment,after,capacity,utilization:capacity?Number((1-after/capacity).toFixed(3)):0,shortfall,recoverySteps,applied});
+   const netRecovery=replenishment-requested,recoverySteps=after>=capacity?0:netRecovery>0?Math.ceil((capacity-after)/netRecovery):null;
+   resourceOut.push({id:r.id,name:r.name||"Resource",step,before,requested,consumed:used,replenished:replenishment,after,capacity,capacityGrowthPerStep:Number(r.capacityGrowthPerStep)||0,utilization:capacity?Number((1-after/capacity).toFixed(3)):0,shortfall,allocations,recoverySteps,applied});
   });
   constraints.filter(c=>!c.disabled&&(Number(c.when)||1)<=step&&(c.until===undefined||c.until===""||step<=Number(c.until))).forEach(c=>{
    const trigger=variables.find(v=>v.id===c.triggerVariable),value=trigger?Number(state[trigger.id]??5):null,threshold=Number(c.triggerThreshold??5),op=c.triggerOperator||"gte";
