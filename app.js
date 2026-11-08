@@ -300,7 +300,7 @@ if(b.id==="apply-template"){
  }else{
   const collections=["actors","variables","links","events","communications","relationships","powerRelations","institutions","markets","segments","competitors","journeys","journeyPoints","negotiations","negotiationParties","decisionInteractions","reputationEvents","groups","groupEvents","aiSystems","aiEvents","constraints","resources","dependencies","decisions","branches","experiments","evidence"];
   collections.forEach(k=>{state[k]=[...(state[k]||[]),...(fresh[k]||[])]});
-  state.situation={...state.situation,...fresh.situation,description:[state.situation.description,fresh.situation.description].filter(Boolean).join("\n\n")};
+  state.situation={...state.situation,...fresh.situation,description:[state.situation.description,fresh.situation.description].filter(Boolean).join("\n\n")};guidedDraft.aiExtraContext=[guidedDraft.aiExtraContext||"", "Template AI coverage: "+(fresh.aiSystems||[]).map(x=>x.name+". "+x.systemType+". "+x.notes).join(" ")+" AI interaction review: "+(fresh.aiEvents||[]).map(x=>x.name+". "+x.governance+" "+x.humanImpact).join(" ")].filter(Boolean).join("\n\n");
  }
  save();go("overview");toast("Template applied. Review and edit its assumptions before simulating.");return
 }
