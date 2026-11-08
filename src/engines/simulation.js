@@ -10,7 +10,7 @@ function parseEffects(text,variables){
 }
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
- const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
+ const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
  const rng=randomFrom(hash(seedText)), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
@@ -122,11 +122,13 @@ function simulate(model,options){
        if(!triggered){actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:false,responded:false,probability:0});return;}
        const baseChance=Math.max(0,Math.min(1,Number(actor.responseChance??45)/100));
        // Explicit user-entered drivers; transparent heuristics, not learned psychology.
-       const modifiers={goalAlignment:Math.max(-5,Math.min(5,Number(actor.goalAlignment)||0))*.025,incentivePressure:(clamp(actor.incentivePressure??5)-5)*.012,resourceCapacity:(clamp(actor.resourceCapacity??5)-5)*.018,perceivedRisk:(clamp(actor.riskTolerance??5)-clamp(actor.perceivedRisk??5))*.012,informationConfidence:(clamp(actor.informationConfidence??5)-5)*.008};
+       const powerLinks=chosen.actorId?powerRelations.filter(link=>link.holderActorId===chosen.actorId&&link.dependentActorId===actor.id&&link.active!==false):[];
+       const powerModifier=powerLinks.reduce((sum,link)=>{const leverage=clamp(link.leverage??5)/10,dependency=clamp(link.dependency??5)/10,legitimacy=clamp(link.legitimacy??5)/10;const magnitude=leverage*dependency*legitimacy*.12;return sum+(link.effect==="discourage"?-magnitude:link.effect==="mobilize"?magnitude:0);},0);
+       const modifiers={goalAlignment:Math.max(-5,Math.min(5,Number(actor.goalAlignment)||0))*.025,incentivePressure:(clamp(actor.incentivePressure??5)-5)*.012,resourceCapacity:(clamp(actor.resourceCapacity??5)-5)*.018,perceivedRisk:(clamp(actor.riskTolerance??5)-clamp(actor.perceivedRisk??5))*.012,informationConfidence:(clamp(actor.informationConfidence??5)-5)*.008,powerStructure:powerModifier};
        const adjustment=Object.values(modifiers).reduce((sum,value)=>sum+value,0);
        const chance=Math.max(0,Math.min(1,baseChance+adjustment));
        const responded=rng()<chance;
-       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null});
+       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null,powerLinks:powerLinks.map(link=>link.id),powerModifier});
        if(responded){
          Object.entries(effects).forEach(([k,v])=>{levels[k]=clamp(levels[k]+v*.45);});
          stepNotes.push("Actor policy response ("+(actor.policy||"custom")+"): "+actor.name);
