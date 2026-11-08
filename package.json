@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/prepare-netlify.mjs"
+    "build": "node scripts/prepare-dist.mjs"
   }
 }
