@@ -23,12 +23,14 @@ function enhance(model,run,options){
  resources.forEach(r=>resourceState[r.id]=Math.max(0,Number(r.initial??r.level??r.capacity??0)));
  const constraintOut=[],resourceOut=[],dependencyOut=[],stepSnapshots=[];
  const timeline=(run.timeline||[]).map(x=>({...x,levels:{...(x.levels||{})}}));
+ let previousBase=null,previousEnhanced=null;
  const chosen=list(m,"decisions").find(x=>x.id===run.decision);
  const dependencyAtStart=dependencyStatus(m,1,levels,resources.map(r=>({...r,level:resourceState[r.id]})));
  const blocked=dependencyAtStart.filter(x=>x.hard&&!x.passed&&(!x.requiredBy||x.requiredBy===run.decision));
  if(blocked.length){run.warnings.push("Strategy prerequisite warning: "+blocked.map(x=>x.name).join(", ")+". Declared direct strategy effects were still applied; interpret this run as a stress test, not an executable plan.");}
  timeline.forEach((snap,index)=>{
-  const step=snap.step||index+1, state={...snap.levels};
+  const step=snap.step||index+1, baseState={...snap.levels};
+  const state=previousBase&&previousEnhanced?Object.fromEntries(Object.keys(baseState).map(id=>[id,clamp(Number(previousEnhanced[id]??baseState[id])+Number(baseState[id])-Number(previousBase[id]??baseState[id]))])):{...baseState};
   resources.forEach(r=>{
    const before=resourceState[r.id],capacity=Math.max(0,Number(r.capacity??r.initial??r.level??10)),consumption=Math.max(0,Number(r.consumptionPerStep??0)),replenishment=Math.max(0,Number(r.replenishmentPerStep??0));
    const used=Math.min(before,consumption),after=Math.min(capacity,Math.max(0,before-used+replenishment));resourceState[r.id]=after;
@@ -49,7 +51,7 @@ function enhance(model,run,options){
   const dep=dependencyStatus(m,step,state,resources.map(r=>({...r,level:resourceState[r.id]})));dependencyOut.push(...dep);
   const missing=dep.filter(x=>x.hard&&!x.passed&&(!x.requiredBy||x.requiredBy===run.decision));
   if(missing.length&&chosen)run.warnings.push("Unmet prerequisite at step "+step+": "+missing.map(x=>x.name).join(", ")+".");
-  snap.levels=state;stepSnapshots.push({step,levels:{...state},resources:resources.map(r=>({id:r.id,level:resourceState[r.id]})),activeConstraints:constraintOut.filter(x=>x.step===step&&x.triggered).map(x=>x.name),unmetDependencies:missing.map(x=>x.name)});
+  snap.levels=state;previousBase=baseState;previousEnhanced={...state};stepSnapshots.push({step,levels:{...state},resources:resources.map(r=>({id:r.id,level:resourceState[r.id]})),activeConstraints:constraintOut.filter(x=>x.step===step&&x.triggered).map(x=>x.name),unmetDependencies:missing.map(x=>x.name)});
  });
  Object.assign(run.finalLevels,stepSnapshots.length?stepSnapshots[stepSnapshots.length-1].levels:levels);
  let weighted=0,weight=0;variables.forEach(v=>{const polarity=v.direction==="positive"?1:v.direction==="negative"?-1:0,w=Math.max(0,Number(v.importance)||1)*({low:.55,medium:.8,high:1}[v.confidence]||.6);weighted+=(Number(run.finalLevels[v.id]??5)-5)*polarity*w;weight+=w;});run.score=weight?Math.round(Math.max(0,Math.min(100,50+weighted/(weight*5)*50))):50;run.low=Math.min(run.low,run.score);run.high=Math.max(run.high,run.score);
