@@ -273,6 +273,50 @@ const searchAliases={
 "Online course / cohort programme delivery":"student online learning cohort instructor course completion"
 };
 const baseEntries=variants.map((v,i)=>({id:String(i),category:packs[v.packIndex][0],subcategory:packs[v.packIndex][1],name:contextName(v),description:packs[v.packIndex][2]+". "+v.stage[1]+" "+v.stakeholders[1]+" "+v.environment[1]+" "+v.pressure[1],stage:v.stage[0],stakeholders:v.stakeholders[0],environment:v.environment[0],pressure:v.pressure[0],searchText:(packs[v.packIndex][2]+" "+packs[v.packIndex][5]+" "+packs[v.packIndex][7]).toLowerCase()}));
-function list(filters={}){let out=baseEntries;if(filters.category)out=out.filter(x=>x.category===filters.category);if(filters.subcategory)out=out.filter(x=>x.subcategory===filters.subcategory);if(filters.query){const terms=String(filters.query).toLowerCase().trim().split(/\s+/).filter(Boolean);out=out.filter(x=>{const hay=(x.name+" "+x.description+" "+x.category+" "+x.subcategory+" "+x.searchText+" "+(searchAliases[x.subcategory]||"")).toLowerCase();return terms.every(term=>hay.includes(term));});out.sort((a,b)=>{const score=x=>terms.reduce((n,term)=>n+(x.name.toLowerCase().includes(term)?4:0)+(x.subcategory.toLowerCase().includes(term)?3:0)+(x.category.toLowerCase().includes(term)?1:0),0);return score(b)-score(a);});}return filters.limit?out.slice(0,filters.limit):out;}
-root.STRATOSTemplates=Object.freeze({list,build:(index,geo={},chosen={})=>detailedBuild(index,geo,chosen),count:variants.length,categories:[...new Set(packs.map(p=>p[0]))],subcategories:packs.map(p=>({category:p[0],name:p[1]})),dimensions,combinationCount,catalogueCount,readyMadeCount:variants.length,formatCount:n=>Number(n).toLocaleString("en-US")});
+const semanticGroups=[
+ ["music","beat","beats","song","songs","track","tracks","instrumental","producer","artist","musician","recording","audio","soundtrack","sync","licensing","royalty","publishing","music supervisor","placement"],
+ ["follow-up","followup","reply","replied","response","respond","ghosted","ignored","no answer","no response","silence","unresponsive","outreach","cold email","pitch"],
+ ["sales","sell","selling","buyer","customer","client","prospect","purchase","buy","deal","revenue","payment","checkout"],
+ ["broker","brokerage","intermediary","middleman","introducer","referral","commission","agent","mandate"],
+ ["student","campus","university","college","lecturer","professor","scholarship","admission","hostel"],
+ ["dating","romance","relationship","partner","crush","attraction","communication","texting"],
+ ["supplier","vendor","procurement","sourcing","purchase order","rfq","tender"],
+ ["hire","hiring","recruit","recruitment","candidate","job","employment","staffing"],
+ ["investor","fundraising","funding","venture capital","angel","investment","capital"],
+ ["tenant","landlord","rent","rental","lease","property","real estate"],
+ ["crisis","emergency","incident","outage","disruption","failure","recovery"],
+ ["conflict","dispute","argument","disagreement","mediation","grievance"],
+ ["team","workplace","employee","manager","colleague","organization","coordination"],
+ ["marketing","advertising","ads","campaign","promotion","audience","attention","conversion"],
+ ["product","prototype","launch","innovation","app","software","saas","feature"]
+];
+const stopWords=new Set(["i","im","i'm","we","our","my","me","the","a","an","and","or","but","to","for","of","in","on","at","with","from","by","about","into","trying","want","need","would","like","who","that","this","there","is","are","was","were","be","been","being","it","they","them","he","she","their","his","her","has","have","had","not","no","do","does","did","after","before","because","as","while","when","what","how","can","could","should","just","very","really","someone","something"]);
+function normalizeToken(x){return String(x).toLowerCase().replace(/[^a-z0-9]+/g,"").replace(/ies$/,"y").replace(/(ing|ed|es|s)$/,"");}
+function expandQuery(query){
+ const raw=String(query||"").toLowerCase();
+ const tokens=raw.split(/[^a-z0-9]+/).map(normalizeToken).filter(x=>x.length>1&&!stopWords.has(x));
+ const expanded=new Set(tokens);
+ semanticGroups.forEach(group=>{if(group.some(term=>raw.includes(term)||tokens.includes(normalizeToken(term))))group.forEach(term=>expanded.add(normalizeToken(term)));});
+ const phrases=[];
+ if(/no\s+(reply|response|answer)|hasn.t replied|not replied|ignored|ghosted|unresponsive/.test(raw)){["followup","outreach","response","communication","sales"].forEach(x=>expanded.add(x));phrases.push("no response / follow-up");}
+ if(/sell|selling|offer|pitch|buyer|customer|client/.test(raw)){["sales","buyer","offer","conversion","trust","access"].forEach(x=>expanded.add(x));phrases.push("selling / reaching a buyer");}
+ if(/beat|instrumental|producer|artist|music/.test(raw)){["music","artist","producer","licensing","placement","catalogue"].forEach(x=>expanded.add(x));phrases.push("music / creative placement");}
+ return {raw,tokens:[...new Set(tokens)],expanded:[...expanded],phrases};
+}
+function semanticSearch(query,filters={}){
+ const q=expandQuery(query),terms=q.expanded;
+ if(!q.raw.trim())return list({...filters,limit:filters.limit||150}).map(item=>({...item,matchScore:0,matchReasons:[]}));
+ const scored=baseEntries.filter(x=>(!filters.category||x.category===filters.category)&&(!filters.subcategory||x.subcategory===filters.subcategory)).map(item=>{
+  const name=normalizeToken(item.name+" "+item.subcategory),hay=normalizeToken([item.name,item.description,item.category,item.subcategory,item.searchText,searchAliases[item.subcategory]||""].join(" "));
+  const matched=terms.filter(term=>term.length>2&&hay.includes(term));
+  const exact=q.tokens.filter(term=>name.includes(term));
+  const phraseHits=q.phrases.filter(p=>{const keys=p.split(" / ");return keys.some(k=>hay.includes(normalizeToken(k)));});
+  const score=matched.length*1.2+exact.length*2+(item.subcategory.toLowerCase().includes(q.raw.trim())?8:0)+phraseHits.length*2;
+  const reasons=[];if(exact.length)reasons.push("Matches your wording: "+exact.slice(0,4).join(", "));if(phraseHits.length)reasons.push(...phraseHits);if(matched.length)reasons.push("Related ideas: "+matched.slice(0,5).join(", "));
+  return {...item,matchScore:score,matchReasons:reasons};
+ }).filter(x=>x.matchScore>0).sort((a,b)=>b.matchScore-a.matchScore||a.name.localeCompare(b.name));
+ return filters.limit?scored.slice(0,filters.limit):scored;
+}
+function list(filters={}){if(filters.query)return semanticSearch(filters.query,filters);let out=baseEntries;if(filters.category)out=out.filter(x=>x.category===filters.category);if(filters.subcategory)out=out.filter(x=>x.subcategory===filters.subcategory);return filters.limit?out.slice(0,filters.limit):out;}
+root.STRATOSTemplates=Object.freeze({list,semanticSearch,build:(index,geo={},chosen={})=>detailedBuild(index,geo,chosen),count:variants.length,categories:[...new Set(packs.map(p=>p[0]))],subcategories:packs.map(p=>({category:p[0],name:p[1]})),dimensions,combinationCount,catalogueCount,readyMadeCount:variants.length,formatCount:n=>Number(n).toLocaleString("en-US")});
 })(window);
