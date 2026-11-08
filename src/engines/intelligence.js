@@ -56,9 +56,10 @@ function enhance(model,run,options){
   });
   const dep=dependencyStatus(m,step,state,resources.map(r=>({...r,level:resourceState[r.id]})));dependencyOut.push(...dep);
   const missing=dep.filter(x=>x.hard&&!x.passed&&(!x.requiredBy||x.requiredBy===run.decision));
-  if(missing.length&&chosen)run.warnings.push("Unmet prerequisite at step "+step+": "+missing.map(x=>x.name).join(", ")+".");
+
   snap.levels=state;previousBase=baseState;previousEnhanced={...state};stepSnapshots.push({step,levels:{...state},resources:resources.map(r=>({id:r.id,level:resourceState[r.id]})),activeConstraints:constraintOut.filter(x=>x.step===step&&x.triggered).map(x=>x.name),unmetDependencies:missing.map(x=>x.name)});
  });
+ const unmetHard=[...new Set(dependencyOut.filter(x=>x.hard&&!x.passed).map(x=>x.name))];if(unmetHard.length&&!run.warnings.some(x=>x.includes("Unmet hard prerequisite")))run.warnings.push("Unmet hard prerequisite(s) during the run: "+unmetHard.join(", ")+".");
  Object.assign(run.finalLevels,stepSnapshots.length?stepSnapshots[stepSnapshots.length-1].levels:levels);
  let weighted=0,weight=0;variables.forEach(v=>{const polarity=v.direction==="positive"?1:v.direction==="negative"?-1:0,w=Math.max(0,Number(v.importance)||1)*({low:.55,medium:.8,high:1}[v.confidence]||.6);weighted+=(Number(run.finalLevels[v.id]??5)-5)*polarity*w;weight+=w;});run.score=weight?Math.round(Math.max(0,Math.min(100,50+weighted/(weight*5)*50))):50;run.low=Math.min(run.low,run.score);run.high=Math.max(run.high,run.score);
  run.timeline=timeline;
