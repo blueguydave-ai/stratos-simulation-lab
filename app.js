@@ -84,7 +84,7 @@ if(b.dataset.delExp){state.experiments=state.experiments.filter(x=>x.id!==b.data
 if(b.id==="add-evidence")openEvidence();if(b.dataset.delEvidence){state.evidence=state.evidence.filter(x=>x.id!==b.dataset.delEvidence);save();render()}
 });
 }
-function bindGlobal(){document.addEventListener("click",e=>{const b=e.target.closest("button[data-view]");if(b&&b.closest(".top"))go(b.dataset.view)});
+function bindGlobal(){document.addEventListener("click",e=>{const b=e.target.closest("button[data-view]");if(b&&!b.closest("#content"))go(b.dataset.view)});
 $("#export").onclick=$("#export-top").onclick=()=>{const blob=new Blob([JSON.stringify({app:"STRATOS",version:2,exportedAt:new Date().toISOString(),model:state},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="stratos-model-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(a.href)};
 $("#import").onchange=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);const m=x.model||x;if(!m.situation||!Array.isArray(m.variables)||!Array.isArray(m.actors))throw Error("Not a STRATOS v2 model");state={...blank(),...m,situation:{...blank().situation,...m.situation}};save();render();toast("Model imported")}catch(err){alert("Import failed: "+err.message)}};r.readAsText(file);e.target.value=""};
 }
