@@ -8,6 +8,39 @@ function randomFrom(seed){let a=seed>>>0;return function(){a+=0x6D2B79F5;let t=a
 function parseEffects(text,variables){
  const out={};String(text||"").split(/[,;\n]+/).forEach(part=>{const m=part.trim().match(/^([^:]+):\s*([+-]?\d+(?:\.\d+)?)$/);if(!m)return;const key=m[1].trim();const v=variables.find(x=>x.id===key||String(x.name||"").toLowerCase()===key.toLowerCase());if(v)out[v.id]=Number(m[2]);});return out;
 }
+function chooseActorAction(actor,context,rng){
+ const alignment=Number(actor.goalAlignment??0),incentive=Number(actor.incentivePressure??5),resources=Number(actor.resourceCapacity??5),risk=Number(actor.perceivedRisk??5),tolerance=Number(actor.riskTolerance??5),urgency=Number(actor.urgency??5),skepticism=Number(actor.skepticism??5),status=Number(actor.statusQuoBias??5),load=Number(actor.cognitiveLoad??5),loss=Number(actor.lossAversion??5);
+ const objections=String(actor.objections||"")+" "+String(actor.observableConstraint||"")+" "+String(actor.privateBelief||"");
+ const policy=String(actor.policy||"").toLowerCase();
+ const cues=context.cues||{};
+ const candidates=[
+  {id:"investigate",label:"Looked for more information",why:"The actor had unanswered questions or uncertainty",score:1+skepticism*.16+(10-clamp(actor.informationConfidence??5))*.12+(cues.uncertainty||0)*.25},
+  {id:"negotiate",label:"Asked for different terms or made a counterproposal",why:"The actor saw room to improve the terms",score:1+Math.max(0,alignment)*.13+incentive*.12+(cues.opportunity||0)*.3+(policy==="negotiate"?2:0)},
+  {id:"cooperate",label:"Supported the move and took a cooperative step",why:"The move appeared to support the actor's interests",score:1+Math.max(0,alignment)*.2+incentive*.12+(policy==="cooperate"?2:0)},
+  {id:"resist",label:"Objected, challenged the move or protected their position",why:"The move threatened an interest, preference or boundary",score:1+Math.max(0,-alignment)*.2+risk*.1+(/object|risk|loss|unfair|disagree|concern|protect|cannot|can't|not able/i.test(objections)?2:0)+(policy==="resist"?2:0)},
+  {id:"delay",label:"Waited, postponed a decision or asked for more time",why:"The actor preferred to avoid committing immediately",score:1+status*.16+load*.12+risk*.08+(10-urgency)*.1+(policy==="delay"?2:0)},
+  {id:"withdraw",label:"Stepped back or pursued another option",why:"Continuing looked less attractive than disengaging",score:Math.max(.2,1+(5-alignment)*.15+(risk-tolerance)*.12+(5-resources)*.1+(policy==="withdraw"?2:0))},
+  {id:"compete",label:"Pursued an alternative or tried to protect their position",why:"The actor had an incentive to compete rather than cooperate",score:1+incentive*.1+(cues.competition||0)*.35+(policy==="compete"?2:0)},
+  {id:"adapt",label:"Changed approach to keep the opportunity moving",why:"The actor adjusted to the situation rather than abandoning the goal",score:1+resources*.1+urgency*.1+(cues.change||0)*.25+(policy==="adapt"?2:0)}
+ ];
+ const total=candidates.reduce((n,x)=>n+Math.max(.05,x.score),0);let pick=rng()*total;
+ for(const item of candidates){pick-=Math.max(.05,item.score);if(pick<=0)return item;}
+ return candidates[candidates.length-1];
+}
+function actionVariableEffects(action,variables,levels){
+ const patterns={
+  investigate:[[/information|knowledge|awareness|evidence|clarity|understanding/i,.22],[/trust|confidence/i,.08]],
+  negotiate:[[/agreement|deal|conversion|commitment|willingness|cooperation/i,.2],[/tension|conflict|resistance/i,-.12]],
+  cooperate:[[/trust|cooperation|coordination|relationship|support|alignment/i,.22],[/conflict|resistance/i,-.12]],
+  resist:[[/resistance|conflict|tension|risk|delay|friction/i,.2],[/trust|cooperation|agreement/i,-.12]],
+  delay:[[/delay|time|urgency|momentum|interest|engagement/i,-.18],[/risk|uncertainty/i,.08]],
+  withdraw:[[/interest|engagement|participation|demand|conversion|commitment/i,-.25],[/competition|alternatives/i,.12]],
+  compete:[[/competition|pressure|demand|awareness|market share/i,.18],[/margin|profit|price/i,-.08]],
+  adapt:[[/capability|fit|quality|efficiency|readiness|access/i,.18],[/cost|workload|complexity/i,.08]]
+ };
+ const applied={};for(const v of variables){const entry=(patterns[action]||[]).find(([re])=>re.test(String(v.name||"")));if(!entry)continue;const before=Number(levels[v.id]??v.level??5),delta=entry[1];const after=clamp(before+delta);if(after!==before){levels[v.id]=after;applied[v.id]=Number((after-before).toFixed(3));}}
+ return applied;
+}
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
  const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], journeys=model.journeys||[], journeyPoints=model.journeyPoints||[], negotiations=(model.negotiations||[]).map(item=>({...item})), negotiationParties=model.negotiationParties||[], decisionInteractions=model.decisionInteractions||[], reputationEvents=model.reputationEvents||[], groupEvents=model.groupEvents||[], aiSystems=model.aiSystems||[], aiEvents=model.aiEvents||[], informationFlows=model.informationFlows||[], groups=(model.groups||[]).map(item=>({...item})), links=model.links||[], decisions=model.decisions||[];
@@ -258,7 +291,7 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
      const chance=Math.max(0,Math.min(1,Number(rival.reactionChance??50)/100));
      const responded=triggered&&rng()<chance, applied={};
      if(responded)Object.entries(effects).forEach(([key,value])=>{levels[key]=clamp(levels[key]+value);applied[key]=value;});
-     competitorOutcomes.push({id:rival.id,name:rival.name||"Competitor",marketId:rival.marketId,marketName:markets.find(m=>m.id===rival.marketId)?.name||"",step:t,triggered,responded,chance,applied,reason:!triggered?"Reaction trigger not met":responded?"Competitor reaction applied":"Competitor did not react in this seeded run"});
+     competitorOutcomes.push({id:rival.id,name:rival.name||"Competitor",marketId:rival.marketId,marketName:markets.find(m=>m.id===rival.marketId)?.name||"",step:t,triggered,responded,chance,applied,action:responded?(rival.reactionAction||"Adjusted its offer or defended its position"):"No move",reason:!triggered?"Reaction trigger not met":responded?"Competitor selected a response to the changing situation":"Competitor did not act in this seeded run"});
    }
    if(chosen){
      actors.forEach(actor=>{
@@ -283,14 +316,16 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
        const chance=Math.max(0,Math.min(1,baseChance+adjustment));
        const responded=rng()<chance;
        const policy=actor.policy||"custom";
-       const policyActions={cooperate:"Cooperated or supported the proposed action",compete:"Competed or pursued an alternative",resist:"Resisted or challenged the proposed action",delay:"Delayed or waited before acting",withdraw:"Withdrew or disengaged",negotiate:"Negotiated or requested different terms",adapt:"Adapted their approach",custom:"No specific response action was defined"};
-       const responseDescription=String(actor.behaviour||"").trim()||String(actor.publicPosition||"").trim()||policyActions[policy]||policyActions.custom;
+       const cues={uncertainty:variables.some(v=>/uncertainty|information|trust|risk/i.test(v.name||"")&&clamp(levels[v.id])<4)?1:0,opportunity:variables.some(v=>/demand|interest|opportunity|growth/i.test(v.name||"")&&clamp(levels[v.id])>6)?1:0,competition:competitors.length?1:0,change:events.some(e=>Math.max(1,Number(e.when)||1)===t)?1:0};
+       const action=chooseActorAction(actor,{cues,levels,step:t,chosen},rng);
+       const responseDescription=action.label;
        const hasEffects=Object.keys(effects).length>0;
-       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy,triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,responseDescription,responseBasis:actor.behaviour?"Entered plausible behaviour":actor.publicPosition?"Entered public position":policy!=="custom"?"Selected response policy":"Illustrative default response chance; action not specified",effectApplied:responded&&hasEffects,decisionContext:{objections:String(actor.objections||""),publicPosition:String(actor.publicPosition||""),privateBelief:String(actor.privateBelief||""),observableConstraint:String(actor.observableConstraint||""),actualAction:String(actor.actualAction||"")},triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null,powerLinks:powerLinks.map(link=>link.id),powerModifier,institutionalModifier,reputationScore,reputationModifier,activeInstitutionIds:activeInstitutions.map(rule=>rule.id),aiSystemIds:aiSystemsForActor.map(ai=>ai.id),aiModifier});
-       if(responded){
-         Object.entries(effects).forEach(([k,v])=>{levels[k]=clamp(levels[k]+v*.45);});
-         stepNotes.push("Actor response ("+policy+"): "+actor.name);
-       }
+       const automaticEffects=responded?actionVariableEffects(action.id,variables,levels):{};
+       const explicitEffects={};
+       if(responded)Object.entries(effects).forEach(([k,v])=>{const actual=v*.45;levels[k]=clamp(levels[k]+actual);explicitEffects[k]=Number(actual.toFixed(3));});
+       const combinedEffects={...automaticEffects,...explicitEffects};
+       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy,action:action.id,actionReason:action.why,triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,responseDescription,responseBasis:"Action selected by STRATOS from the actor's interests, constraints and current conditions; illustrative, not a prediction",effectApplied:responded&&Object.keys(combinedEffects).length>0,applied:combinedEffects,decisionContext:{objections:String(actor.objections||""),publicPosition:String(actor.publicPosition||""),privateBelief:String(actor.privateBelief||""),observableConstraint:String(actor.observableConstraint||""),actualAction:String(actor.actualAction||"")},triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null,powerLinks:powerLinks.map(link=>link.id),powerModifier,institutionalModifier,reputationScore,reputationModifier,activeInstitutionIds:activeInstitutions.map(rule=>rule.id),aiSystemIds:aiSystemsForActor.map(ai=>ai.id),aiModifier});
+       if(responded)stepNotes.push(actor.name+" "+action.label.toLowerCase()+" because "+action.why.toLowerCase());
      });
    }
    // Schedule each delayed link once per time step, outside propagation rounds.
