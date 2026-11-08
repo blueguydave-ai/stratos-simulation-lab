@@ -10,7 +10,7 @@ function parseEffects(text,variables){
 }
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
- const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], journeys=model.journeys||[], journeyPoints=model.journeyPoints||[], negotiations=(model.negotiations||[]).map(item=>({...item})), negotiationParties=model.negotiationParties||[], decisionInteractions=model.decisionInteractions||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
+ const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], journeys=model.journeys||[], journeyPoints=model.journeyPoints||[], negotiations=(model.negotiations||[]).map(item=>({...item})), negotiationParties=model.negotiationParties||[], decisionInteractions=model.decisionInteractions||[], informationFlows=model.informationFlows||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
  const rng=randomFrom(hash(seedText)), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
@@ -43,6 +43,7 @@ function simulate(model,options){
    if(Object.keys(direct).length)notes.push("Applied the strategy's entered direct effects at step 0.");
  }
  const eventsSorted=events.slice().sort((a,b)=>Number(a.when)-Number(b.when));
+ const messageQueue=communications.map(message=>({...message,deliveryStep:Math.max(1,Number(message.when)||1),relayIndex:0,originName:message.name||"Message",forwarded:false}));
  for(let t=1;t<=steps;t++){
    const stepNotes=[], due=pending.filter(x=>x.at===t);
    // Actors update only beliefs about variables they can observe. Missing beliefs start neutral.
@@ -59,33 +60,23 @@ function simulate(model,options){
      });
    });
    for(const item of due){if(levels[item.variableId]!==undefined){levels[item.variableId]=clamp(levels[item.variableId]+item.amount);stepNotes.push(item.label);}}
-   for(const message of communications.filter(item=>Math.max(1,Number(item.when)||1)===t)){
-     const sender=actors.find(actor=>actor.id===message.senderId);
-     const recipient=actors.find(actor=>actor.id===message.recipientId);
-     const variable=variables.find(item=>item.id===message.variableId);
-     if(!recipient||!variable){communicationOutcomes.push({id:message.id,name:message.name||"Message",step:t,delivered:false,reason:"Missing recipient or target variable"});continue;}
+   const dueMessages=messageQueue.filter(item=>item.deliveryStep===t);
+   for(const message of dueMessages){
+     const queueIndex=messageQueue.indexOf(message);if(queueIndex>=0)messageQueue.splice(queueIndex,1);
+     const sender=actors.find(actor=>actor.id===message.senderId),recipient=actors.find(actor=>actor.id===message.recipientId),variable=variables.find(item=>item.id===message.variableId);
+     if(!recipient||!variable){communicationOutcomes.push({id:message.id,name:message.name||"Message",step:t,delivered:false,forwarded:!!message.forwarded,reason:"Missing recipient or target variable"});continue;}
      const access=String(recipient.informationAccess||"").split(/[,;]+/).map(value=>value.trim().toLowerCase()).filter(Boolean);
-     if(access.length&&!access.includes(variable.id.toLowerCase())&&!access.includes(String(variable.name||"").toLowerCase())){communicationOutcomes.push({id:message.id,name:message.name||"Message",step:t,sender:sender?.name||"Unknown sender",recipient:recipient.name,delivered:false,reason:"Recipient lacks access to target information"});stepNotes.push("Message blocked by information access: "+(message.name||variable.name));continue;}
-     const beliefs=actorBeliefs[recipient.id]||(actorBeliefs[recipient.id]={});
-     const relationship=relationships.find(item=>item.fromActorId===message.senderId&&item.toActorId===message.recipientId);
-     const trust=relationship?clamp(relationship.trust??5)/10:0.5;
-     const respect=relationship?clamp(relationship.respect??5)/10:0.5;
-     const before=beliefs[variable.id]??5,claim=clamp(message.claimedValue);
-     const credibility=Math.max(0,Math.min(10,Number(message.credibility??5)))/10;
-     const confidenceFactor=Math.max(0,Math.min(10,Number(recipient.informationConfidence??5)))/10;
-     const learning=Math.max(0,Math.min(1,Number(recipient.learningRate??0.25)));
-     const accuracyFactor=({accurate:1,partial:0.5,misleading:0.8})[message.accuracy]??1;
-     const relationshipFactor=0.5+trust*0.4+respect*0.1;
-     const influence=learning*credibility*confidenceFactor*accuracyFactor*relationshipFactor;
+     if(access.length&&!access.includes(variable.id.toLowerCase())&&!access.includes(String(variable.name||"").toLowerCase())){communicationOutcomes.push({id:message.id,name:message.name||"Message",step:t,sender:sender?.name||"Unknown sender",recipient:recipient.name,delivered:false,forwarded:!!message.forwarded,reason:"Recipient lacks access to target information"});stepNotes.push("Message blocked by information access: "+(message.name||variable.name));continue;}
+     const beliefs=actorBeliefs[recipient.id]||(actorBeliefs[recipient.id]={}),relationship=relationships.find(item=>item.fromActorId===message.senderId&&item.toActorId===message.recipientId);
+     const trust=relationship?clamp(relationship.trust??5)/10:0.5,respect=relationship?clamp(relationship.respect??5)/10:0.5,before=beliefs[variable.id]??5,claim=clamp(message.claimedValue);
+     const credibility=Math.max(0,Math.min(10,Number(message.credibility??5)))/10,confidenceFactor=Math.max(0,Math.min(10,Number(recipient.informationConfidence??5)))/10,learning=Math.max(0,Math.min(1,Number(recipient.learningRate??0.25)));
+     const accuracyFactor=({accurate:1,partial:0.5,misleading:0.8})[message.accuracy]??1,relationshipFactor=0.5+trust*0.4+respect*0.1,influence=learning*credibility*confidenceFactor*accuracyFactor*relationshipFactor;
      const after=clamp(before+(claim-before)*influence);beliefs[variable.id]=after;
-     communicationOutcomes.push({id:message.id,name:message.name||"Message",step:t,sender:sender?.name||"Unknown sender",recipient:recipient.name,variable:variable.name,claim,before,after,influence,accuracy:message.accuracy||"unspecified",trust,respect,relationshipFactor,delivered:true});
-     if(relationship){
-       const trustBefore=clamp(relationship.trust??5);
-       const trustDelta=message.accuracy==="accurate"?0.35:message.accuracy==="misleading"?-0.8:message.accuracy==="partial"?-0.1:0;
-       relationship.trust=clamp(trustBefore+trustDelta);
-       relationshipOutcomes.push({step:t,fromActorId:relationship.fromActorId,toActorId:relationship.toActorId,from:sender?.name||"Unknown sender",to:recipient.name,trustBefore,trustAfter:relationship.trust,trustDelta,respect:clamp(relationship.respect??5)});
-     }
+     communicationOutcomes.push({id:message.id,name:message.name||"Message",originName:message.originName||message.name||"Message",step:t,sender:sender?.name||"Unknown sender",recipient:recipient.name,variable:variable.name,claim,before,after,influence,accuracy:message.accuracy||"unspecified",trust,respect,relationshipFactor,forwarded:!!message.forwarded,relayDepth:Number(message.relayIndex)||0,narrative:message.narrative||"",framing:message.framing||"",persuasionTactic:message.persuasionTactic||"",sourceVisibility:message.sourceVisibility||"visible"});
+     if(relationship){const trustBefore=clamp(relationship.trust??5),trustDelta=message.accuracy==="accurate"?0.35:message.accuracy==="misleading"?-0.8:message.accuracy==="partial"?-0.1:0;relationship.trust=clamp(trustBefore+trustDelta);relationshipOutcomes.push({step:t,fromActorId:relationship.fromActorId,toActorId:relationship.toActorId,from:sender?.name||"Unknown sender",to:recipient.name,trustBefore,trustAfter:relationship.trust,trustDelta,respect:clamp(relationship.respect??5)});}
      stepNotes.push((message.name||"Message")+" delivered to "+recipient.name+"; belief changed "+before.toFixed(1)+" to "+after.toFixed(1));
+     const relayIds=String(message.relayActorIds||"").split(/[,;]+/).map(value=>value.trim()).filter(Boolean),nextId=relayIds[Number(message.relayIndex)||0];
+     if(nextId&&rng()<Math.max(0,Math.min(1,Number(message.shareProbability??0)))){const delay=Math.max(1,Math.min(20,Number(message.relayDelay)||1)),decay=Math.max(0,Math.min(1,Number(message.credibilityDecay??0.8)));messageQueue.push({...message,senderId:recipient.id,recipientId:nextId,deliveryStep:t+delay,relayIndex:(Number(message.relayIndex)||0)+1,credibility:Number(message.credibility??5)*decay,forwarded:true});}
    }
    for(const group of groups.filter(item=>Math.max(1,Number(item.when)||1)===t)){
      const memberIds=String(group.memberIds||"").split(/[,;]+/).map(x=>x.trim()).filter(Boolean),members=memberIds.map(id=>actors.find(actor=>actor.id===id||String(actor.name||"").toLowerCase()===id.toLowerCase())).filter(Boolean);
