@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (belief and information-asymmetry increment)
+Last updated: 2026-11-08 (actor communication and information influence increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -51,7 +51,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 - This is a software contract/prototype, not empirically validated behavioural, economic or cultural simulation.
 
 ## Important limitations / known gaps
-- Actor response policies now have editable behaviour labels, optional variable triggers, thresholds, response chances and recorded trigger outcomes. Goals, incentives, resources, constraints, information, attention, priority, risk tolerance and time pressure can be recorded, but explicit trigger/effect rules and five user-entered numeric decision drivers influence response propensity. Actors also hold initial beliefs, have editable information access lists, and update accessible beliefs toward observed model state according to learning rate and information confidence. Trigger conditions evaluate actor beliefs, not the objective state. These are transparent heuristics, not calibrated probabilities. Actors now have editable initial beliefs, observable-variable access lists and learning rates. Beliefs update gradually toward the model's current state only for accessible variables, and actor trigger conditions consult their own beliefs. This is a simple information-asymmetry mechanism, not a theory of cognition or calibrated learning. Strategic belief manipulation, message credibility, source trust, competing interpretations and empirical calibration remain future work.
+- Actor response policies now have editable behaviour labels, optional variable triggers, thresholds, response chances and recorded trigger outcomes. Goals, incentives, resources, constraints, information, attention, priority, risk tolerance and time pressure can be recorded, but explicit trigger/effect rules and five user-entered numeric decision drivers influence response propensity. Actors also hold initial beliefs, have editable information access lists, and update accessible beliefs toward observed model state according to learning rate and information confidence. Trigger conditions evaluate actor beliefs, not the objective state. These are transparent heuristics, not calibrated probabilities. Actors now have editable initial beliefs, observable-variable access lists and learning rates. Beliefs update gradually toward the model's current state only for accessible variables, and actor trigger conditions consult their own beliefs. This is a simple information-asymmetry mechanism, not a theory of cognition or calibrated learning. Actor-to-actor communication records support scheduled messages, target variables, claimed values, sender/recipient, perceived credibility and author-labelled accuracy (accurate, partial, misleading). Recipient beliefs update according to information access, learning rate, information confidence and message credibility. This is an explicit message-influence heuristic, not a validated persuasion model. Message networks, competing sources, trust histories, selective disclosure strategies and empirical calibration remain future work.
 - Causal links are user-entered hypotheses. The model does not establish causality.
 - No calibrated distributions, real-time data, geographic database, legal database or cultural norms dataset are connected.
 - No Monte Carlo ensemble, sensitivity experiment suite or model calibration yet.
@@ -61,7 +61,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 ## Next implementation priorities
 1. Verify browser deployment and run both test pages.
 2. Expose simulation controls for fixed seed, event uncertainty, link delay and actor response chance.
-3. Expand information mechanics: source credibility, selective attention, competing interpretations, strategic disclosure and belief revision from observed outcomes. Then add negotiation/bargaining mechanics and calibration.
+3. Expand communication mechanics: multi-variable messages, source-specific trust histories, competing sources, selective disclosure strategies and negotiation/bargaining. Then calibrate against observed outcomes.
 4. Add event conditions, triggers, recurrence and event dependencies.
 5. Add scenario comparison across multiple seeds and uncertainty ranges (clearly labelled as sampled scenarios, not forecast probabilities).
 6. Add a feedback/observation loop: predicted signal, actual observation, error, model update and next experiment.
