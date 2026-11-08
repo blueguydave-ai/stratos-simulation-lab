@@ -184,3 +184,31 @@ Repaired malformed JavaScript in the main UI that prevented `app.js` from parsin
 - `netlify.toml` and `scripts/prepare-netlify.mjs` configure a dependency-free static build into `dist`, keeping function source outside the published directory.
 - AI use sends the supplied situation/model/run content to OpenAI. Users should remove personal or sensitive details they do not want sent to the provider.
 - Deployment is not yet confirmed. The GitHub project must be connected to Netlify, the environment variables configured in Netlify, and a successful production deploy completed before AI requests can work.
+
+---
+
+## 5,000-context template library (November 2026)
+
+The optional Situation Templates workspace now exposes 5,000 unique, searchable context entries.
+
+### Hierarchy and coverage
+- 13 broad domains: Business & enterprise; Products & innovation; Markets & sales; Brokerage & intermediation; Negotiation & deals; Work & organizations; Education & campus; Relationships & social; Power & influence; Technology & AI; Public systems & society; Personal strategy; International / cross-cultural.
+- 36 context families, including startup validation, small-business operations, B2B enterprise sales, B2C acquisition, platform/marketplace design, real-estate brokerage, recruitment, creative/music placement, campus dynamics, dating, family systems, coalition influence, AI adoption, public services, career transitions and cross-border entry.
+- Each family is expanded into scenario combinations across five stages (early discovery, initial launch, growth/scaling, established operation, decline/disruption), five stakeholder structures, five operating environments and four dominant pressures.
+- The generated catalog contains exactly 5,000 unique entries. It is a structured scenario-combination library, not 5,000 independently researched empirical case studies.
+
+### UI
+- Broad-domain filter, context-family filter, full-text search and exact-context selector.
+- The selector shows up to 150 matches at once to keep the mobile interface manageable; search and filters can reach the complete catalog.
+- Optional country/jurisdiction, region and locality fields.
+- Replace or merge mode. Export the current model before replacing it if a backup is needed.
+- All generated assumptions remain editable and should be checked before simulation.
+
+### Model generation
+Each context builds the complete STRATOS model structure, with starter actors, variables, causal hypotheses, institutions, markets, segments, competitors, journeys, negotiations, groups, constraints, resources, decisions, events, experiments and evidence prompts. Context-specific scenario dimensions are included in the situation, model metadata, extra variables, events and experiments.
+
+### Important limitations
+- Template entries are starting structures and hypotheses, not verified facts, forecasts, legal advice or calibrated probabilities.
+- No country or culture is assumed. Legal and social context fields request local evidence; avoid treating a national population as homogeneous.
+- Scenario combinations are generic scaffolds. Some stage/environment combinations may be irrelevant to a particular context and should be edited or removed.
+- The library should continue to grow through deeper domain-specific specializations, not merely by increasing combinatorial counts.
