@@ -46,3 +46,7 @@ This increment adds a versioned core contract, validation and domain registry. I
 
 ## Power and dependency relations
 Power relations are directed records between a strategy initiator (holder) and a dependent actor. They identify the user-entered source of leverage, leverage strength, dependency and perceived legitimacy. When the holder is the selected decision's actor, the relation can apply a bounded transparent modifier (maximum ±0.12 per relation) to the dependent actor's response propensity. Mobilizing and discouraging effects are explicit user choices. This is a scenario rule, not a general theory of authority or compliance; it does not infer coercion, consent, legal authority or actual control.
+
+
+## Institutions and environmental constraints
+Institutional rules are explicit, editable records with a category, scope, affected actor list, activation step, optional variable trigger, severity, enforcement/reach, response effect, variable effects, and source/uncertainty notes. At activation they apply only their user-entered variable effects; from their start step onward, active matching rules may adjust targeted actors' response propensity when a selected strategy is run. The response modifier is bounded by severity × enforcement × 0.15. This is a transparent scenario heuristic, not a legal determination, cultural generalization, or calibrated enforcement model. Rule records do not imply universal application: scope and actor targets must be entered deliberately.
