@@ -44,7 +44,7 @@ function enhance(model,run,options){
    if(linked&&r.exhaustionEffect!==undefined&&ratio<1){const effect=Number(r.exhaustionEffect)*(1-ratio);state[linked.id]=clamp(Number(state[linked.id]??5)+effect);}
    const effectMap=parseEffects(r.effects,variables),applied={};
    Object.entries(effectMap).forEach(([id,amount])=>{const actual=amount*(capacity?ratio:0);state[id]=clamp(Number(state[id]??5)+actual);applied[id]=Number(actual.toFixed(3));});
-   const netRecovery=replenishment-requested,recoverySteps=after>=capacity?0:netRecovery>0?Math.ceil((capacity-after)/netRecovery):null;
+   const netRecovery=replenishment-requested-(Number(r.capacityGrowthPerStep)||0),recoverySteps=after>=capacity?0:netRecovery>0?Math.ceil((capacity-after)/netRecovery):null;
    resourceOut.push({id:r.id,name:r.name||"Resource",step,before,requested,consumed:used,replenished:replenishment,after,capacity,capacityGrowthPerStep:Number(r.capacityGrowthPerStep)||0,utilization:capacity?Number((1-after/capacity).toFixed(3)):0,shortfall,allocations,recoverySteps,applied});
   });
   constraints.filter(c=>!c.disabled&&(Number(c.when)||1)<=step&&(c.until===undefined||c.until===""||step<=Number(c.until))).forEach(c=>{
@@ -65,6 +65,7 @@ function enhance(model,run,options){
  run.steps=timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+Number(x.levels[v.id]??5).toFixed(1)).join("; ")}));
  run.constraints=constraintOut;run.resources=resourceOut;run.dependencies=dependencyOut;run.intelligenceTimeline=stepSnapshots;
  run.metrics={...(run.metrics||{}),constraintsTriggered:constraintOut.filter(x=>x.triggered).length,resourcesTracked:resources.length,resourceShortfalls:resourceOut.filter(x=>x.shortfall).length,unmetHardDependencies:dependencyOut.filter(x=>x.hard&&!x.passed).length};
+ run.summary="Indicative weighted alignment only. Final state: "+variables.map(v=>v.name+" "+Number(run.finalLevels[v.id]??5).toFixed(1)+"/10").join("; ")+". Dynamics and resource effects are included in these final levels.";
  if(constraints.length||resources.length||dependencies.length)run.notes.push("System dynamics layer applied "+constraints.length+" constraint(s), "+resources.length+" resource(s), and "+dependencies.length+" dependency record(s).");
  return run;
 }
@@ -73,10 +74,10 @@ function analyze(model){
  const incoming={},outgoing={};variables.forEach(v=>{incoming[v.id]=[];outgoing[v.id]=[];});
  links.forEach(l=>{if(outgoing[l.from])outgoing[l.from].push(l);if(incoming[l.to])incoming[l.to].push(l);});
  const leverage=variables.map(v=>{const out=outgoing[v.id]||[],inn=incoming[v.id]||[],score=out.reduce((n,l)=>n+Math.max(0,Number(l.strength)||1),0)+inn.reduce((n,l)=>n+Math.max(0,Number(l.strength)||1)*.5,0);return {id:v.id,name:v.name||"Unnamed variable",outgoing:out.length,incoming:inn.length,leverage:Number(score.toFixed(2)),evidence:v.evidenceStatus||"unspecified",confidence:v.confidence||"unspecified"};}).sort((a,b)=>b.leverage-a.leverage);
- const secondOrder=[];links.forEach(a=>links.filter(b=>b.from===a.to&&b.to!==a.from).forEach(b=>secondOrder.push({via:a.to,from:a.from,to:b.to,sign:a.sign==="negative"||b.sign==="negative"?"negative":"positive"})));
+ const secondOrder=[];links.forEach(a=>(outgoing[a.to]||[]).filter(b=>b.to!==a.from).forEach(b=>secondOrder.push({via:a.to,from:a.from,to:b.to,sign:a.sign==="negative"||b.sign==="negative"?"negative":"positive"})));
  const competingExplanations=variables.flatMap(v=>{const causes=incoming[v.id]||[];return causes.length>1?[{target:v.name||v.id,causes:causes.map(l=>({variable:variables.find(x=>x.id===l.from)?.name||l.from,sign:l.sign||"unspecified",strength:Number(l.strength)||1,reason:l.reason||""}))}]:[];});
  const feedbackLoops=[],seenLoops=new Set();
- const walkLoop=(start,current,path)=>{if(path.length>5)return;(outgoing[current]||[]).forEach(edge=>{if(edge.to===start&&path.length>1){const nodes=[...path,start],key=nodes.slice(0,-1).slice().sort().join("|");if(!seenLoops.has(key)){seenLoops.add(key);feedbackLoops.push({nodes:nodes.map(id=>variables.find(v=>v.id===id)?.name||id),length:path.length,kind:"directed feedback cycle"});}}else if(!path.includes(edge.to))walkLoop(start,edge.to,[...path,edge.to]);});};
+ const walkLoop=(start,current,path)=>{if(path.length>5||feedbackLoops.length>=100)return;(outgoing[current]||[]).forEach(edge=>{if(edge.to===start&&path.length>1){const nodes=[...path,start],key=nodes.slice(0,-1).slice().sort().join("|");if(!seenLoops.has(key)){seenLoops.add(key);feedbackLoops.push({nodes:nodes.map(id=>variables.find(v=>v.id===id)?.name||id),length:path.length,kind:"directed feedback cycle"});}}else if(!path.includes(edge.to))walkLoop(start,edge.to,[...path,edge.to]);});};
  variables.forEach(v=>walkLoop(v.id,v.id,[v.id]));
  const indirectEffects=decisions.flatMap(d=>{const direct=parseEffects(d.effectText,variables);return Object.entries(direct).flatMap(([from,amount])=>(outgoing[from]||[]).map(link=>{const propagated=amount*(link.sign==="negative"?-1:1)*(Number(link.strength)||1);const target=variables.find(v=>v.id===link.to);const conflicts=target&&((target.direction==="positive"&&propagated<0)||(target.direction==="negative"&&propagated>0));return conflicts?{strategy:d.name,via:variables.find(v=>v.id===from)?.name||from,target:target.name||target.id,estimatedDirection:propagated<0?"negative":"positive",reason:"One declared causal step may move this variable against its desired direction"}:null;}).filter(Boolean));});
 
