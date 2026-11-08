@@ -195,9 +195,9 @@ function simulate(model,options){
      const negotiation=negotiations.find(item=>item.id===interaction.negotiationId);
      const action=interaction.actionType||"raise_objection";
      const applied={};
-     if(action==="counteroffer"&&negotiation&&interaction.offerValue!=="")negotiation.initialOffer=Number(interaction.offerValue);
+     if(action==="counteroffer"&&negotiation&&interaction.offerValue!==""){negotiation.initialOffer=Number(interaction.offerValue);negotiation.when=t;}
      if(action==="withdraw"&&negotiation)negotiation.withdrawn=true;
-     if(action==="return"&&negotiation){negotiation.withdrawn=false;if(interaction.offerValue!=="")negotiation.initialOffer=Number(interaction.offerValue);}
+     if(action==="return"&&negotiation){negotiation.withdrawn=false;negotiation.when=t;if(interaction.offerValue!=="")negotiation.initialOffer=Number(interaction.offerValue);}
      if(interaction.objectionStatus==="addressed"&&interaction.objection)stepNotes.push("Objection explicitly marked addressed: "+interaction.objection);
      Object.entries(parseEffects(interaction.effects,variables)).forEach(([key,value])=>{levels[key]=clamp(levels[key]+value);applied[key]=value;});
      decisionInteractionOutcomes.push({id:interaction.id,name:interaction.name||action,step:t,scheduledStep:Math.max(1,Number(interaction.when)||1),delaySteps:Math.max(0,Number(interaction.delaySteps)||0),actor:actor?.name||"Unassigned",actionType:action,objection:interaction.objection||"",objectionStatus:interaction.objectionStatus||"open",responseOrEvidence:interaction.responseOrEvidence||"",negotiation:negotiation?.name||"",offerValue:interaction.offerValue===""||interaction.offerValue===undefined?null:Number(interaction.offerValue),applied,reason:action==="counteroffer"&&negotiation?"Counteroffer updated the negotiation's opening offer":action==="withdraw"?"Participant withdrew from this negotiation":action==="return"?"Participant returned to the negotiation":interaction.objectionStatus==="addressed"?"Objection marked addressed by the scenario author":"Recorded interaction; no automatic resolution inferred"});
@@ -310,6 +310,7 @@ function simulate(model,options){
  const low=Math.max(0,Math.round(score-uncertainty)),high=Math.min(100,Math.round(score+uncertainty));
  const sensitivities=variables.map(v=>({name:v.name||"Unnamed variable",impact:Math.abs((levels[v.id]-5)*(Number(v.importance)||1)),level:levels[v.id],evidence:v.evidenceStatus||"unspecified"})).sort((a,b)=>b.impact-a.impact).slice(0,5).map(v=>v.name+" (final "+Number(v.level).toFixed(1)+"/10; "+v.evidence+")");
  if(events.some(e=>e.likelihood==="unknown"))warnings.push("At least one event has unknown likelihood; event occurrence is sampled for this run, not forecast.");
+ decisionInteractions.filter(item=>Math.max(1,Number(item.when)||1)+Math.max(0,Number(item.delaySteps)||0)>steps).forEach(item=>warnings.push("A decision interaction is scheduled beyond the run horizon and is not reported as completed: "+(item.name||item.id)+"."));
  if(chosen?.downside)warnings.push("Strategy downside to monitor: "+chosen.downside);
  if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are scheduled once per link per step, using the source state at scheduling time. Effects beyond the run horizon are not shown.");
  const branchName={base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch]||branch;
