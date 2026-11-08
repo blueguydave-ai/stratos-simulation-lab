@@ -10,7 +10,7 @@ function parseEffects(text,variables){
 }
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
- const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
+ const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
  const rng=randomFrom(hash(seedText)), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
@@ -28,7 +28,7 @@ function simulate(model,options){
  Object.entries(model.scenarioOverrides?.[branch]||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v));});
  if(branch==="favourable")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]+.7);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]-.4);});
  if(branch==="adverse")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]-.8);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]+.6);});
- const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],marketOutcomes=[],pending=[];
+ const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],marketOutcomes=[],segmentOutcomes=[],competitorOutcomes=[],pending=[];
  if(!variables.length)warnings.push("No variables: the simulation has no measurable state.");
  if(!actors.length)warnings.push("No actors modelled: strategic responses are missing.");
  if(!links.length)warnings.push("No causal links: knock-on effects are limited.");
@@ -142,6 +142,46 @@ function simulate(model,options){
      const outcome={id:market.id,name:market.name||"Unnamed market",type:market.type||"unspecified",segment:market.segment||"",step:t,priceFactor:Number(priceFactor.toFixed(3)),competitionFactor:Number(competitionFactor.toFixed(3)),substituteFactor:Number(substituteFactor.toFixed(3)),saturationFactor:Number(saturationFactor.toFixed(3)),demandPotential:Number(demandPotential.toFixed(3)),capacityFactor:Number(capacityFactor.toFixed(3)),salesFactor:Number(salesFactor.toFixed(3)),revenueFactor:Number(revenueFactor.toFixed(3)),applied,reason:!demandVariable&&!revenueVariable?"No linked demand or revenue variable":"Market snapshot applied"};
      marketOutcomes.push(outcome);stepNotes.push("Market snapshot: "+outcome.name+" · sales factor "+outcome.salesFactor.toFixed(2)+" · revenue factor "+outcome.revenueFactor.toFixed(2));
    }
+   // Segment-level buyer fit and relative competitor attractiveness.
+   for(const segment of segments.filter(item=>Math.max(1,Number(item.when)||1)===t)){
+     const market=markets.find(item=>item.id===segment.marketId);
+     if(!market)continue;
+     const budget=clamp(segment.purchasingPower??market.purchasingPower??5);
+     const sensitivity=clamp(segment.priceSensitivity??market.priceSensitivity??5);
+     const ownPrice=clamp(segment.ourPrice??market.priceIndex??5);
+     const priceFit=Math.max(.1,1-((ownPrice-budget)/10)*(sensitivity/5));
+     const needsFit=.1+clamp(segment.needsFit??5)/10*.9;
+     const awareness=.1+clamp(segment.awareness??5)/10*.9;
+     const switching=.1+clamp(segment.switchingCost??5)/10*.9;
+     const ownAttraction=priceFit*.4+needsFit*.3+awareness*.2+switching*.1;
+     const rivals=competitors.filter(c=>c.marketId===market.id);
+     const rivalAttractions=rivals.map(c=>{
+       const price=clamp(c.priceIndex??5), affordability=Math.max(.1,1-((price-budget)/10)*(sensitivity/5));
+       const differentiation=.1+clamp(c.differentiation??5)/10*.9, reputation=.1+clamp(c.reputation??5)/10*.9, capacity=.1+clamp(c.capacity??5)/10*.9;
+       return {id:c.id,name:c.name||"Competitor",attraction:affordability*.4+differentiation*.25+reputation*.2+capacity*.15};
+     });
+     const rivalTotal=rivalAttractions.reduce((sum,x)=>sum+x.attraction,0);
+     const relativeShare=ownAttraction/(ownAttraction+rivalTotal);
+     const normalizedShare=relativeShare/(rivalTotal?0.5:1);
+     const sizeShare=Math.max(0,Math.min(1,Number(segment.sizeShare??50)/100));
+     const segmentFactor=Math.max(.2,Math.min(1.5,normalizedShare));
+     const demandVariable=variables.find(v=>v.id===segment.demandVariableId||String(v.name||"").toLowerCase()===String(segment.demandVariableId||"").toLowerCase());
+     const applied={};
+     if(demandVariable){const change=(segmentFactor-1)*2*sizeShare;levels[demandVariable.id]=clamp(levels[demandVariable.id]+change);applied[demandVariable.id]=Number(change.toFixed(3));}
+     segmentOutcomes.push({id:segment.id,name:segment.name||"Unnamed segment",marketId:market.id,marketName:market.name||"Market",step:t,sizeShare,priceFit:Number(priceFit.toFixed(3)),needsFit:Number(needsFit.toFixed(3)),awareness:Number(awareness.toFixed(3)),switchingCost:Number(switching.toFixed(3)),ownAttraction:Number(ownAttraction.toFixed(3)),rivalAttractions:rivalAttractions.map(x=>({...x,attraction:Number(x.attraction.toFixed(3))})),relativeShare:Number(relativeShare.toFixed(3)),segmentFactor:Number(segmentFactor.toFixed(3)),applied,reason:demandVariable?"Segment snapshot applied":"No linked segment demand variable"});
+   }
+   // Competitor reactions require an explicitly selected strategy and explicit effects.
+   for(const rival of competitors.filter(item=>Math.max(1,Number(item.reactionWhen)||1)===t)){
+     if(!chosen)continue;
+     const effects=parseEffects(rival.reactionEffects,variables);
+     if(!Object.keys(effects).length)continue;
+     const triggerId=rival.triggerVariable||"", observed=triggerId?levels[triggerId]:undefined, threshold=Number(rival.triggerThreshold??5), op=rival.triggerOperator||"gte";
+     const triggered=!triggerId||observed===undefined||(op==="gte"&&observed>=threshold)||(op==="lte"&&observed<=threshold)||(op==="gt"&&observed>threshold)||(op==="lt"&&observed<threshold);
+     const chance=Math.max(0,Math.min(1,Number(rival.reactionChance??50)/100));
+     const responded=triggered&&rng()<chance, applied={};
+     if(responded)Object.entries(effects).forEach(([key,value])=>{levels[key]=clamp(levels[key]+value);applied[key]=value;});
+     competitorOutcomes.push({id:rival.id,name:rival.name||"Competitor",marketId:rival.marketId,marketName:markets.find(m=>m.id===rival.marketId)?.name||"",step:t,triggered,responded,chance,applied,reason:!triggered?"Reaction trigger not met":responded?"Competitor reaction applied":"Competitor did not react in this seeded run"});
+   }
    if(chosen){
      actors.forEach(actor=>{
        const effects=parseEffects(actor.responseEffects,variables);
@@ -207,7 +247,7 @@ function simulate(model,options){
  if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are scheduled once per link per step, using the source state at scheduling time. Effects beyond the run horizon are not shown.");
  const branchName={base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch]||branch;
  const summary="Indicative weighted alignment only. Final state: "+variables.map(v=>v.name+" "+Number(levels[v.id]).toFixed(1)+"/10").join("; ")+".";
- return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,markets:marketOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
+ return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,markets:marketOutcomes,segments:segmentOutcomes,competitors:competitorOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
 }
 root.STRATOSSimulation=Object.freeze({simulate,parseEffects});
 })(window);
