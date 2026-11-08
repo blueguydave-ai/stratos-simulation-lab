@@ -10,7 +10,7 @@ function parseEffects(text,variables){
 }
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
- const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
+ const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], journeys=model.journeys||[], journeyPoints=model.journeyPoints||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
  const rng=randomFrom(hash(seedText)), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
@@ -28,7 +28,7 @@ function simulate(model,options){
  Object.entries(model.scenarioOverrides?.[branch]||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v));});
  if(branch==="favourable")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]+.7);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]-.4);});
  if(branch==="adverse")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]-.8);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]+.6);});
- const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],marketOutcomes=[],segmentOutcomes=[],competitorOutcomes=[],pending=[];
+ const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],marketOutcomes=[],segmentOutcomes=[],competitorOutcomes=[],journeyOutcomes=[],journeyPointOutcomes=[],pending=[];
  if(!variables.length)warnings.push("No variables: the simulation has no measurable state.");
  if(!actors.length)warnings.push("No actors modelled: strategic responses are missing.");
  if(!links.length)warnings.push("No causal links: knock-on effects are limited.");
@@ -170,6 +170,25 @@ function simulate(model,options){
      if(demandVariable){const change=(segmentFactor-1)*2*sizeShare;levels[demandVariable.id]=clamp(levels[demandVariable.id]+change);applied[demandVariable.id]=Number(change.toFixed(3));}
      segmentOutcomes.push({id:segment.id,name:segment.name||"Unnamed segment",marketId:market.id,marketName:market.name||"Market",step:t,sizeShare,priceFit:Number(priceFit.toFixed(3)),needsFit:Number(needsFit.toFixed(3)),awareness:Number(awareness.toFixed(3)),switchingCost:Number(switching.toFixed(3)),ownAttraction:Number(ownAttraction.toFixed(3)),rivalAttractions:rivalAttractions.map(x=>({...x,attraction:Number(x.attraction.toFixed(3))})),relativeShare:Number(relativeShare.toFixed(3)),segmentFactor:Number(segmentFactor.toFixed(3)),applied,reason:demandVariable?"Segment snapshot applied":"No linked segment demand variable"});
    }
+   // Buyer journeys: ordered touchpoints model interest separately from practical access and friction.
+   for(const journey of journeys.filter(item=>Math.max(1,Number(item.when)||1)===t)){
+     const points=journeyPoints.filter(point=>point.journeyId===journey.id).slice().sort((a,b)=>(Number(a.order)||1)-(Number(b.order)||1));
+     let cumulative=1,journeyApplied={};
+     const pointResults=[];
+     for(const point of points){
+       const interest=clamp(point.interest??5),ease=clamp(point.ease??5),difficulty=clamp(point.difficulty??5),access=clamp(point.access??5);
+       const costBurden=clamp(point.costBurden??5),timeBurden=clamp(point.timeBurden??5),trustRequired=clamp(point.trustRequired??5),trustAvailable=clamp(point.trustAvailable??5),availability=clamp(point.availability??5);
+       const easeFactor=.2+ease*.08, accessFactor=.1+access*.09, difficultyFactor=1-difficulty*.065;
+       const costFactor=1-costBurden*.045, timeFactor=1-timeBurden*.035, trustFactor=Math.max(.25,1+((trustAvailable-trustRequired)/10)*.35), availabilityFactor=.2+availability*.08;
+       const completion=Math.max(.02,Math.min(.98,(.35+interest*.065)*easeFactor*accessFactor*difficultyFactor*costFactor*timeFactor*trustFactor*availabilityFactor));
+       cumulative*=completion;
+       const result={id:point.id,name:point.name||"Unnamed touchpoint",stage:point.stage||"other",order:Number(point.order)||1,interest,ease,difficulty,access,costBurden,timeBurden,trustRequired,trustAvailable,availability,easeFactor:Number(easeFactor.toFixed(3)),accessFactor:Number(accessFactor.toFixed(3)),difficultyFactor:Number(difficultyFactor.toFixed(3)),costFactor:Number(costFactor.toFixed(3)),timeFactor:Number(timeFactor.toFixed(3)),trustFactor:Number(trustFactor.toFixed(3)),availabilityFactor:Number(availabilityFactor.toFixed(3)),completionFactor:Number(completion.toFixed(3)),cumulativeContinuation:Number(cumulative.toFixed(3)),accessType:point.accessType||"mixed",barriers:point.barriers||"",workaround:point.workaround||""};
+       pointResults.push(result);journeyPointOutcomes.push({...result,journeyId:journey.id,journeyName:journey.name||"Unnamed journey",step:t});
+     }
+     const conversionVariable=variables.find(v=>v.id===journey.conversionVariableId||String(v.name||"").toLowerCase()===String(journey.conversionVariableId||"").toLowerCase());
+     if(conversionVariable){const change=(cumulative-1)*2;levels[conversionVariable.id]=clamp(levels[conversionVariable.id]+change);journeyApplied[conversionVariable.id]=Number(change.toFixed(3));}
+     journeyOutcomes.push({id:journey.id,name:journey.name||"Unnamed buyer journey",segmentId:journey.segmentId||"",segmentName:segments.find(s=>s.id===journey.segmentId)?.name||"",step:t,pointCount:points.length,continuationFactor:Number(cumulative.toFixed(3)),pointOutcomes:pointResults,applied:journeyApplied,reason:!points.length?"No journey touchpoints configured":conversionVariable?"Journey conversion index applied":"No linked conversion variable"});
+   }
    // Competitor reactions require an explicitly selected strategy and explicit effects.
    for(const rival of competitors.filter(item=>Math.max(1,Number(item.reactionWhen)||1)===t)){
      if(!chosen)continue;
@@ -247,7 +266,7 @@ function simulate(model,options){
  if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are scheduled once per link per step, using the source state at scheduling time. Effects beyond the run horizon are not shown.");
  const branchName={base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch]||branch;
  const summary="Indicative weighted alignment only. Final state: "+variables.map(v=>v.name+" "+Number(levels[v.id]).toFixed(1)+"/10").join("; ")+".";
- return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,markets:marketOutcomes,segments:segmentOutcomes,competitors:competitorOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
+ return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,markets:marketOutcomes,segments:segmentOutcomes,competitors:competitorOutcomes,journeys:journeyOutcomes,journeyPoints:journeyPointOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
 }
 root.STRATOSSimulation=Object.freeze({simulate,parseEffects});
 })(window);
