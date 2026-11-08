@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="STRATOS explores plausible outcomes, the conditions that cause them, and the blind spots in a situation.">
+  <title>STRATOS — Outcome Explorer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="STRATOS home"><span class="brand-mark">S</span><span>STRATOS</span></a>
+      <span class="top-note">OUTCOME EXPLORER</span>
+    </header>
+
+    <section class="intro">
+      <div class="eyebrow"><span class="pulse"></span> STRATEGIC SIMULATION LAB</div>
+      <h1>See what could happen.<br><span>And what would cause it.</span></h1>
+      <p class="intro-copy">Describe a situation, decision or system. STRATOS will map the most plausible ways it could unfold, the conditions behind each outcome, and the blind spots you may have missed.</p>
+    </section>
+
+    <section class="input-panel" aria-labelledby="input-title">
+      <div class="panel-heading">
+        <div><span class="step-label">YOUR EXPERIMENT</span><h2 id="input-title">What's happening?</h2></div>
+        <span class="input-hint">One description is enough</span>
+      </div>
+      <label class="sr-only" for="scenario">Describe the situation you want to explore</label>
+      <textarea id="scenario" maxlength="8000" placeholder="Example: I'm launching a new product using paid ads. The audience doesn't know my brand, my budget is limited, and I need to understand the different ways the launch could unfold..." required></textarea>
+      <div class="input-footer">
+        <span id="char-count">0 / 8,000</span>
+        <button id="run-button" class="run-button" type="button"><span>Explore outcomes</span><span aria-hidden="true">↗</span></button>
+      </div>
+      <p class="privacy-note">Your description is sent securely to the AI model for analysis. Your API key stays on the server.</p>
+    </section>
+
+    <section id="status" class="status" aria-live="polite" hidden></section>
+    <section id="results" class="results" hidden aria-live="polite"></section>
+
+    <footer class="footer"><span>STRATOS by David Jayy</span><span>Scenarios are possibilities to test, not guaranteed predictions.</span></footer>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>
