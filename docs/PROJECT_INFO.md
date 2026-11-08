@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (dynamic alliances and AI influence increment)
+Last updated: 2026-11-08 (AI competition and human-AI interaction increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -123,3 +123,7 @@ Added a Reputation & audience perceptions editor to the Actors workspace. Reputa
 
 ### Dynamic alliances and AI influence increment
 Added `groupEvents` for recruitment, joining, exit/defection, switching coalitions, support-share changes, cohesion/coordination/conformity changes and dissolution. Group structures are cloned per run. Added `aiSystems` for human-operated tools, autonomous agents, recommendation/ranking systems, content generation, scoring/screening and robotics. Records capture operator, affected actors, activation step, adoption, contextual reliability, oversight, bias, failure modes, evidence/uncertainty notes and explicit variable effects. Effects are scaled by adoption, reliability and oversight; targeted actor response propensity receives a small role-sensitive AI modifier. This is not an empirical AI capability model. Five engine tests were added; browser execution remains outstanding.
+
+
+### AI competition, collaboration and systemic disruption increment
+Added `aiEvents` for AI-vs-AI competition, human–AI collaboration, automation/deployment races, algorithmic influence operations, outages, data/security incidents, gatekeeping and AI-mediated coordination. Each interaction records systems, timing, intensity, base success assumption, separate success/failure variable effects, governance, human impact and risks. Effects are explicitly authored and intensity-scaled; outcomes are scenario samples, not calibrated forecasts. Fixed group processing so active groups are evaluated on every subsequent simulation step and scheduled membership changes affect later group outcomes. Four additional engine checks defined; browser execution remains outstanding.
