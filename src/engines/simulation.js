@@ -10,7 +10,7 @@ function parseEffects(text,variables){
 }
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
- const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], journeys=model.journeys||[], journeyPoints=model.journeyPoints||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
+ const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], journeys=model.journeys||[], journeyPoints=model.journeyPoints||[], negotiations=model.negotiations||[], negotiationParties=model.negotiationParties||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
  const rng=randomFrom(hash(seedText)), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
@@ -28,7 +28,7 @@ function simulate(model,options){
  Object.entries(model.scenarioOverrides?.[branch]||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v));});
  if(branch==="favourable")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]+.7);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]-.4);});
  if(branch==="adverse")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]-.8);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]+.6);});
- const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],marketOutcomes=[],segmentOutcomes=[],competitorOutcomes=[],journeyOutcomes=[],journeyPointOutcomes=[],pending=[];
+ const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],marketOutcomes=[],segmentOutcomes=[],competitorOutcomes=[],journeyOutcomes=[],journeyPointOutcomes=[],negotiationOutcomes=[],pending=[];
  if(!variables.length)warnings.push("No variables: the simulation has no measurable state.");
  if(!actors.length)warnings.push("No actors modelled: strategic responses are missing.");
  if(!links.length)warnings.push("No causal links: knock-on effects are limited.");
@@ -189,6 +189,40 @@ function simulate(model,options){
      if(conversionVariable){const change=(cumulative-1)*2;levels[conversionVariable.id]=clamp(levels[conversionVariable.id]+change);journeyApplied[conversionVariable.id]=Number(change.toFixed(3));}
      journeyOutcomes.push({id:journey.id,name:journey.name||"Unnamed buyer journey",segmentId:journey.segmentId||"",segmentName:segments.find(s=>s.id===journey.segmentId)?.name||"",step:t,pointCount:points.length,continuationFactor:Number(cumulative.toFixed(3)),pointOutcomes:pointResults,applied:journeyApplied,reason:!points.length?"No journey touchpoints configured":conversionVariable?"Journey conversion index applied":"No linked conversion variable"});
    }
+   // Negotiations: distinguish interest from ability, authority and reservation limits.
+   for(const negotiation of negotiations.filter(item=>Math.max(1,Number(item.when)||1)===t)){
+     const parties=negotiationParties.filter(p=>p.negotiationId===negotiation.id);
+     const buyers=parties.filter(p=>p.role==="buyer"),sellers=parties.filter(p=>p.role==="seller");
+     const required=parties.filter(p=>p.required!==false&&(p.role==="approver"||p.role==="gatekeeper"||p.role==="buyer"||p.role==="seller"));
+     const buyerCeilings=buyers.map(p=>Number(p.reservationValue)).filter(Number.isFinite);
+     const sellerFloors=sellers.map(p=>Number(p.reservationValue)).filter(Number.isFinite);
+     const buyerCeiling=buyerCeilings.length?Math.min(...buyerCeilings):null;
+     const sellerFloor=sellerFloors.length?Math.max(...sellerFloors):null;
+     const overlap=buyerCeiling===null||sellerFloor===null?null:buyerCeiling>=sellerFloor;
+     const start=Number(negotiation.initialOffer??5), target=Number(negotiation.targetOffer??start), rounds=Math.max(1,Math.min(10,Number(negotiation.rounds)||1));
+     let proposed=start,concessions=[];
+     for(let round=1;round<=rounds;round++){
+       const activeBuyers=buyers.filter(p=>p.willingness>=Number(p.minimumWillingness??0)&&p.ability>=Number(p.minimumAbility??0));
+       const activeSellers=sellers.filter(p=>p.willingness>=Number(p.minimumWillingness??0)&&p.ability>=Number(p.minimumAbility??0));
+       const buyerPower=activeBuyers.reduce((s,p)=>s+clamp(p.bargainingPower??5),0);
+       const sellerPower=activeSellers.reduce((s,p)=>s+clamp(p.bargainingPower??5),0);
+       const total=buyerPower+sellerPower||1;
+       const midpoint=(buyerCeiling!==null&&sellerFloor!==null)?(buyerCeiling+sellerFloor)/2:target;
+       const concession= (midpoint-proposed)*Math.min(.5,Math.max(0,Number(negotiation.concessionRate??25)/100));
+       const powerShift=((sellerPower-buyerPower)/total)*Math.abs(concession)*.25;
+       proposed+=concession+powerShift;
+       concessions.push({round,proposed:Number(proposed.toFixed(3)),buyerPower:Number(buyerPower.toFixed(2)),sellerPower:Number(sellerPower.toFixed(2))});
+     }
+     const requiredReady=required.every(p=>clamp(p.authority??5)>=clamp(p.minimumAuthority??5)&&clamp(p.willingness??5)>=clamp(p.minimumWillingness??5)&&clamp(p.ability??5)>=clamp(p.minimumAbility??5));
+     const withinLimits=(buyerCeiling===null||proposed<=buyerCeiling)&&(sellerFloor===null||proposed>=sellerFloor);
+     const walked=parties.some(p=>p.walkAway===true||clamp(p.willingness??5)<clamp(p.walkAwayThreshold??0));
+     const accepted=requiredReady&&withinLimits&&!walked&&overlap!==false;
+     const conversionVariable=variables.find(v=>v.id===negotiation.outcomeVariableId||String(v.name||"").toLowerCase()===String(negotiation.outcomeVariableId||"").toLowerCase());
+     const effects=parseEffects(accepted?negotiation.successEffects:negotiation.failureEffects,variables),applied={};
+     Object.entries(effects).forEach(([key,value])=>{levels[key]=clamp(levels[key]+value);applied[key]=value;});
+     if(conversionVariable){const change=accepted?Number(negotiation.successChange??2):Number(negotiation.failureChange??-1);levels[conversionVariable.id]=clamp(levels[conversionVariable.id]+change);applied[conversionVariable.id]=Number(change.toFixed(3));}
+     negotiationOutcomes.push({id:negotiation.id,name:negotiation.name||"Negotiation",step:t,partyCount:parties.length,requiredReady,withinLimits,overlap,buyerCeiling,sellerFloor,finalOffer:Number(proposed.toFixed(3)),accepted,walked,rounds:concessions,parties:parties.map(p=>({id:p.id,name:p.name,role:p.role,authority:clamp(p.authority??5),willingness:clamp(p.willingness??5),ability:clamp(p.ability??5),bargainingPower:clamp(p.bargainingPower??5),required:p.required!==false})),applied,reason:!parties.length?"No decision-makers or counterparties defined":walked?"A party reached its walk-away condition":!requiredReady?"A required participant lacks authority, willingness or ability":overlap===false?"Buyer and seller reservation limits do not overlap":!withinLimits?"Final offer is outside recorded reservation limits":accepted?"Recorded requirements and reservation limits permit agreement":"Agreement conditions not met"});
+   }
    // Competitor reactions require an explicitly selected strategy and explicit effects.
    for(const rival of competitors.filter(item=>Math.max(1,Number(item.reactionWhen)||1)===t)){
      if(!chosen)continue;
@@ -266,7 +300,7 @@ function simulate(model,options){
  if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are scheduled once per link per step, using the source state at scheduling time. Effects beyond the run horizon are not shown.");
  const branchName={base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch]||branch;
  const summary="Indicative weighted alignment only. Final state: "+variables.map(v=>v.name+" "+Number(levels[v.id]).toFixed(1)+"/10").join("; ")+".";
- return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,markets:marketOutcomes,segments:segmentOutcomes,competitors:competitorOutcomes,journeys:journeyOutcomes,journeyPoints:journeyPointOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
+ return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,markets:marketOutcomes,segments:segmentOutcomes,competitors:competitorOutcomes,journeys:journeyOutcomes,journeyPoints:journeyPointOutcomes,negotiations:negotiationOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
 }
 root.STRATOSSimulation=Object.freeze({simulate,parseEffects});
 })(window);
