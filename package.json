@@ -1,8 +1,0 @@
-{
-  "name": "stratos-by-david-jayy",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "node scripts/prepare-dist.mjs"
-  }
-}
