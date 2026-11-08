@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (decision interaction lifecycle increment)
+Last updated: 2026-11-08 (information network and narrative increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -111,3 +111,7 @@ Actor editor now captures contextual loss sensitivity, status-quo preference, co
 
 ### Decision delays, objection lifecycle and counteroffers
 Added a `decisionInteractions` collection with actor, linked negotiation, action type, initial step, additional delay, objection and manually assessed objection status, response/evidence, optional offer value, explicit variable effects and notes. Supported actions include hesitation/defer, request evidence, raise objection, counteroffer, partial acceptance, withdraw and return. Delayed actions occur only at their scheduled step. Counteroffers update the linked negotiation opening offer; withdrawal suspends its scheduled negotiation and return reopens it. Objections are never automatically resolved. Five engine contract tests were added. Browser execution remains outstanding.
+
+
+### Information networks, narrative framing and reputation signals
+Communication records now support narrative label, framing, recorded persuasion approach, source visibility, ordered relay recipients, forwarding probability, relay delay and credibility decay. The engine simulates explicit relay chains, applies information-access restrictions at each hop, and records forwarded delivery depth and belief changes. Misleading messages may change beliefs without changing objective variable levels. Six engine tests were added for relay, no-forward conditions, credibility decay, access restrictions, belief/world separation and reproducibility. This does not automatically infer persuasion effectiveness or model a complete social network. Browser test execution remains outstanding.
