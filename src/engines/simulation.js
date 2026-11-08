@@ -355,7 +355,7 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
      Object.entries(delta).forEach(([k,v])=>levels[k]=clamp(levels[k]+Math.max(-1,Math.min(1,v))));
    }
    const snapshot={};variables.forEach(v=>snapshot[v.id]=Number(levels[v.id].toFixed(3)));
-   timeline.push({step:t,label:stepNotes.join("; ")||"No declared event or actor move",levels:snapshot,beliefs:Object.fromEntries(actors.map(actor=>[actor.id,{...(actorBeliefs[actor.id]||{})}])),propagationRounds:rounds});
+   timeline.push({step:t,stage:model.worldModel?.processes?.[t-1]?.name||"Ongoing developments",label:(model.worldModel?.processes?.[t-1]?.name?model.worldModel.processes[t-1].name+": ":"")+(stepNotes.join("; ")||"No actor or event change was recorded"),levels:snapshot,beliefs:Object.fromEntries(actors.map(actor=>[actor.id,{...(actorBeliefs[actor.id]||{})}])),propagationRounds:rounds});
    beliefTimeline.push({step:t,actors:actors.map(actor=>({actorId:actor.id,name:actor.name,beliefs:{...(actorBeliefs[actor.id]||{})}}))});
  }
  let weighted=0,weight=0;
