@@ -1,382 +1,93 @@
-/* STRATOS — readable, dependency-free application logic. */
+/* STRATOS v2 — local-first scenario and actor simulation. */
 (() => {
-  "use strict";
-
-  const STORAGE_KEY = "stratos-model-v1";
-  const $ = (selector, root = document) => root.querySelector(selector);
-  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-  const uid = () => "v_" + Math.random().toString(36).slice(2, 10);
-  const today = () => new Date().toISOString().slice(0, 10);
-
-  const templates = [
-    { id:"business", title:"Business & commerce", description:"Demand, offer, distribution, trust, margins, competition.", vars:[["Customer demand","Evidence of real buyer interest.",7,"positive"],["Offer clarity","How easily buyers understand the value.",6,"positive"],["Distribution access","Ability to reach likely buyers.",4,"positive"],["Trust","Belief that the offer and seller are credible.",5,"positive"],["Cash runway","Time available before funds run out.",5,"positive"],["Competition","Alternatives that can win the same buyer.",5,"negative"]] },
-    { id:"brokerage", title:"Brokerage & intermediation", description:"Supply access, buyer access, matching, verification, transaction risk.", vars:[["Verified supply","Access to real, available suppliers.",5,"positive"],["Buyer demand","Qualified buyers with intent.",5,"positive"],["Match quality","Fit between buyer needs and supply.",5,"positive"],["Verification","Ability to validate claims and parties.",4,"positive"],["Transaction friction","Steps and delays before completion.",6,"negative"],["Reputation risk","Exposure to fraud or failed delivery.",5,"negative"]] },
-    { id:"campus", title:"Campus environment", description:"Student needs, access, timing, peer effects, institutional constraints.", vars:[["Reachable student segment","A clearly defined group you can access.",5,"positive"],["Need intensity","How strongly the problem is felt.",6,"positive"],["Timing","Fit with academic and campus rhythms.",5,"positive"],["Peer distribution","Ability for information to travel through peers.",4,"positive"],["Permission constraints","Rules or access barriers.",5,"negative"],["Payment capacity","Ability and willingness to pay.",4,"positive"]] },
-    { id:"b2b", title:"B2B & professional services", description:"Decision makers, procurement, proof, sales cycle, delivery capacity.", vars:[["Problem urgency","Cost of leaving the business problem unsolved.",6,"positive"],["Decision-maker access","Access to people who can approve a purchase.",4,"positive"],["Proof of value","Evidence the solution works.",4,"positive"],["Sales-cycle length","Time from first contact to signed deal.",7,"negative"],["Delivery capacity","Ability to fulfil the promise.",5,"positive"],["Procurement friction","Approvals, compliance, and purchasing steps.",6,"negative"]] },
-    { id:"relationships", title:"Relationships & social navigation", description:"Communication, boundaries, trust, incentives, context. Avoid mind-reading.", vars:[["Communication clarity","How clearly needs and intentions are expressed.",5,"positive"],["Trust","Reliability demonstrated over time.",5,"positive"],["Boundary clarity","How well limits and expectations are understood.",5,"positive"],["Context pressure","External stress affecting interactions.",5,"mixed"],["Reciprocity","Balance of effort and consideration.",5,"positive"]] },
-    { id:"power", title:"Influence & negotiation", description:"Alternatives, leverage, credibility, timing, information, legitimacy.", vars:[["Credible alternatives","Viable options if agreement is not reached.",5,"positive"],["Information quality","Understanding of interests and constraints.",5,"positive"],["Legitimacy","Whether the proposed outcome is defensible.",5,"positive"],["Time pressure","Deadline pressure on the parties.",5,"mixed"],["Dependence","How much one side relies on the other.",5,"mixed"],["Relationship cost","Potential damage from the process.",5,"negative"]] },
-    { id:"product", title:"New or differentiated product", description:"Problem, novelty, usability, switching cost, adoption, repeat use.", vars:[["Problem frequency","How often the target problem occurs.",6,"positive"],["Current alternatives","How well existing solutions perform.",5,"negative"],["Distinctive advantage","Meaningful reason to switch.",4,"positive"],["Ease of adoption","Effort required to start using it.",5,"positive"],["Repeat-use potential","Likelihood of continued value.",5,"positive"],["Feedback access","Ability to observe real use.",4,"positive"]] },
-    { id:"international", title:"International / cross-cultural", description:"Local validation, regulation, language, logistics, context-specific norms.", vars:[["Local demand evidence","Evidence from the actual target location.",4,"positive"],["Regulatory clarity","Understanding of applicable rules.",4,"positive"],["Cultural fit","Locally validated fit, not assumed traits.",4,"positive"],["Logistics reliability","Ability to deliver across distance.",4,"positive"],["Local partner quality","Reliability and reach of local partners.",4,"positive"],["Currency exposure","Risk from exchange-rate movement.",5,"negative"]] },
-    { id:"custom", title:"Blank custom model", description:"Start with no assumptions and define your own variables.", vars:[] }
-  ];
-
-  const initialState = () => ({
-    outcome:"", targetDate:"", currentPosition:"", notes:"",
-    variables:[], links:[],
-    scenarios:{
-      baseline:{label:"Baseline",description:"Conditions remain close to your current estimates.",adjustments:{}},
-      upside:{label:"Upside",description:"A plausible favourable combination of conditions.",adjustments:{}},
-      downside:{label:"Downside",description:"A plausible adverse combination of conditions.",adjustments:{}}
-    },
-    experiments:[], evidence:[], updatedAt:null
-  });
-
-  let state = loadState();
-  let activeScenario = "baseline";
-
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return initialState();
-      const parsed = JSON.parse(raw);
-      return { ...initialState(), ...parsed, scenarios:{...initialState().scenarios,...(parsed.scenarios||{})} };
-    } catch (error) {
-      console.warn("Could not load saved STRATOS model.", error);
-      return initialState();
-    }
-  }
-
-  function saveState() {
-    state.updatedAt = new Date().toISOString();
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      $("#save-status").textContent = "Saved in this browser";
-    } catch (error) {
-      $("#save-status").textContent = "Export recommended";
-    }
-    renderOverview();
-  }
-
-  function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
-  }
-  function toast(message) {
-    const el = $("#toast");
-    el.textContent = message;
-    el.classList.add("show");
-    clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => el.classList.remove("show"), 2400);
-  }
-  function variableById(id) { return state.variables.find(variable => variable.id === id); }
-  function directionLabel(direction) {
-    return direction === "positive" ? "Supports outcome" : direction === "negative" ? "Works against outcome" : "Mixed / uncertain";
-  }
-
-  function showView(name) {
-    $$(".view").forEach(view => view.classList.toggle("active", view.id === "view-" + name));
-    $$(".nav-link").forEach(button => button.classList.toggle("active", button.dataset.view === name));
-    const nav = $(`.nav-link[data-view="${name}"]`);
-    $("#workspace-title").textContent = nav ? nav.textContent.trim() : name;
-    if (name === "model") renderModel();
-    if (name === "scenarios") renderScenarios();
-    if (name === "stress") renderStress();
-    if (name === "experiments") renderExperiments();
-    if (name === "evidence") renderEvidence();
-    window.scrollTo({top:0,behavior:"smooth"});
-  }
-
-  function renderOverview() {
-    $("#metric-variables").textContent = state.variables.length;
-    $("#metric-evidence").textContent = state.evidence.length;
-    $("#metric-experiments").textContent = state.experiments.filter(item => item.status !== "completed").length;
-    $("#model-updated").textContent = state.updatedAt ? "Updated " + new Date(state.updatedAt).toLocaleString() : "Start with a working hypothesis";
-    $("#template-grid").innerHTML = templates.slice(0,6).map(templateCard).join("");
-    $("#method-templates").innerHTML = templates.map(templateCard).join("");
-  }
-
-  function templateCard(template) {
-    return `<button class="template-card" data-template="${template.id}"><strong>${escapeHTML(template.title)}</strong><span>${escapeHTML(template.description)}</span></button>`;
-  }
-
-  function applyTemplate(id) {
-    const template = templates.find(item => item.id === id);
-    if (!template) return;
-    if (state.variables.length && !confirm("Replace the current variables and relationships with this template? Your evidence and experiments will remain.")) return;
-    state.variables = template.vars.map(([name,description,level,direction]) => ({
-      id:uid(),name,description,level,importance:5,direction,confidence:"medium",notes:""
-    }));
-    state.links = [];
-    if (id === "custom") state.variables = [];
-    saveState();
-    showView("model");
-    toast(template.title + " loaded");
-  }
-
-  function renderModel() {
-    $("#outcome-title").value = state.outcome;
-    $("#target-date").value = state.targetDate;
-    $("#current-position").value = state.currentPosition;
-    $("#context-notes").value = state.notes;
-    $("#variable-list").innerHTML = state.variables.length ? state.variables.map(variable => `
-      <article class="variable-card">
-        <div><div class="variable-name">${escapeHTML(variable.name)}</div><div class="variable-desc">${escapeHTML(variable.description || "No description added")}</div></div>
-        <div><div class="level-track"><div class="level-fill" style="width:${Number(variable.level)*10}%"></div></div><div class="mini-meta">Current level: ${variable.level}/10</div></div>
-        <div class="mini-meta"><b>${variable.importance}/10</b>Importance</div>
-        <span class="tag">${escapeHTML(directionLabel(variable.direction))}</span>
-        <div class="card-actions"><button class="icon-button" data-edit-variable="${variable.id}" title="Edit">✎</button><button class="icon-button" data-delete-variable="${variable.id}" title="Delete">×</button></div>
-      </article>`).join("") : '<div class="empty-state">No variables yet. Add the forces that can change your outcome, or choose a context starter on the Overview page.</div>';
-    $("#link-list").innerHTML = state.links.length ? state.links.map(link => {
-      const from = variableById(link.from), to = variableById(link.to);
-      return `<div class="link-row"><span>${escapeHTML(from?.name || "Missing variable")}</span><span class="link-arrow">${link.sign === "positive" ? "＋→" : "−→"} ${link.strength}/3</span><span>${escapeHTML(to?.name || "Missing variable")}<small class="record-meta"> ${escapeHTML(link.reason || "")}</small></span><button class="icon-button" data-delete-link="${link.id}">×</button></div>`;
-    }).join("") : '<div class="empty-state">No relationships mapped. Add one when you have a reason to believe one factor influences another.</div>';
-    populateVariableSelects();
-  }
-
-  function populateSelect(selector, includeBlank = false) {
-    const select = $(selector);
-    if (!select) return;
-    const oldValue = select.value;
-    select.innerHTML = (includeBlank ? '<option value="">Choose a variable</option>' : "") + state.variables.map(variable => `<option value="${variable.id}">${escapeHTML(variable.name)}</option>`).join("");
-    if (state.variables.some(variable => variable.id === oldValue)) select.value = oldValue;
-  }
-  function populateVariableSelects() {
-    ["#experiment-variable","#evidence-variable","#custom-stress-variable","#link-from","#link-to"].forEach(selector => populateSelect(selector, true));
-  }
-
-  function openVariableDialog(id) {
-    const variable = id ? variableById(id) : null;
-    $("#variable-form").reset();
-    $("#variable-id").value = variable?.id || "";
-    $("#variable-dialog-title").textContent = variable ? "Edit variable" : "Add variable";
-    $("#variable-name").value = variable?.name || "";
-    $("#variable-description").value = variable?.description || "";
-    $("#variable-level").value = variable?.level ?? 5;
-    $("#variable-importance").value = variable?.importance ?? 5;
-    $("#variable-direction").value = variable?.direction || "positive";
-    $("#variable-confidence").value = variable?.confidence || "medium";
-    $("#variable-notes").value = variable?.notes || "";
-    $("#level-output").textContent = $("#variable-level").value;
-    $("#importance-output").textContent = $("#variable-importance").value;
-    $("#variable-dialog").showModal();
-  }
-
-  function saveVariable(event) {
-    event.preventDefault();
-    const id = $("#variable-id").value;
-    const variable = {
-      id:id || uid(),
-      name:$("#variable-name").value.trim(),
-      description:$("#variable-description").value.trim(),
-      level:Number($("#variable-level").value),
-      importance:Number($("#variable-importance").value),
-      direction:$("#variable-direction").value,
-      confidence:$("#variable-confidence").value,
-      notes:$("#variable-notes").value.trim()
-    };
-    if (!variable.name) return;
-    if (id) state.variables = state.variables.map(item => item.id === id ? variable : item);
-    else state.variables.push(variable);
-    $("#variable-dialog").close();
-    saveState(); renderModel(); toast("Variable saved");
-  }
-
-  function addRelationship() {
-    if (state.variables.length < 2) return toast("Add at least two variables first");
-    $("#link-form").reset();
-    populateVariableSelects();
-    $("#link-dialog").showModal();
-  }
-  function saveRelationship(event) {
-    event.preventDefault();
-    const from = $("#link-from").value, to = $("#link-to").value;
-    if (!from || !to || from === to) return toast("Choose two different variables");
-    state.links.push({id:uid(),from,to,sign:$("#link-sign").value,strength:Number($("#link-strength").value),reason:$("#link-reason").value.trim()});
-    $("#link-dialog").close(); saveState(); renderModel(); toast("Relationship added");
-  }
-
-  function scenarioScore(key) {
-    if (!state.variables.length) return {score:0,details:[]};
-    const scenario = state.scenarios[key];
-    let weighted = 0, totalWeight = 0;
-    const details = state.variables.map(variable => {
-      const adjustment = Number(scenario.adjustments[variable.id] || 0);
-      const level = Math.max(0,Math.min(10,Number(variable.level) + adjustment));
-      const polarity = variable.direction === "positive" ? 1 : variable.direction === "negative" ? -1 : 0;
-      const confidenceFactor = variable.confidence === "high" ? 1 : variable.confidence === "low" ? .55 : .8;
-      const contribution = (level - 5) * polarity * Number(variable.importance) * confidenceFactor;
-      weighted += contribution; totalWeight += Number(variable.importance) * confidenceFactor;
-      return {variable,adjustment,level,contribution};
-    });
-    const score = totalWeight ? Math.round(Math.max(0,Math.min(100,50 + (weighted / (totalWeight * 5)) * 50))) : 50;
-    return {score,details};
-  }
-
-  function renderScenarios() {
-    $$("#scenario-tabs button").forEach(button => button.classList.toggle("selected",button.dataset.scenario === activeScenario));
-    const scenario = state.scenarios[activeScenario];
-    const result = scenarioScore(activeScenario);
-    $("#scenario-content").innerHTML = `<article class="scenario-card"><span class="eyebrow">${scenario.label.toUpperCase()} CONDITIONS</span><h3>${scenario.label} scenario</h3><p>${escapeHTML(scenario.description)}</p><div class="scenario-score">${result.score}<span class="score-caption"> / 100 heuristic alignment</span></div><div class="score-caption">A comparative prompt only — not a probability of success.</div><div class="scenario-adjustments">${state.variables.length ? state.variables.map(variable => {
-      const value = Number(scenario.adjustments[variable.id] || 0);
-      return `<div class="adjust-row"><label>${escapeHTML(variable.name)}</label><input type="range" min="-5" max="5" step="1" value="${value}" data-adjust="${variable.id}"><output>${value > 0 ? "+" : ""}${value}</output></div>`;
-    }).join("") : '<div class="empty-state">Add variables to explore scenario adjustments.</div>'}</div></article>`;
-    $("#scenario-comparison").innerHTML = ["upside","baseline","downside"].map(key => {
-      const score = scenarioScore(key).score;
-      return `<article class="comparison-card"><strong>${state.scenarios[key].label}</strong><div class="score">${score}/100</div><p>${escapeHTML(state.scenarios[key].description)}</p></article>`;
-    }).join("");
-  }
-
-  const stressPresets = [
-    {title:"Demand disappears",description:"What if the people you expect to buy stop responding?",test:v=>v.name.toLowerCase().match(/demand|customer|buyer|student|problem|need/)},
-    {title:"Critical resource is lost",description:"What if your key supplier, partner, tool, or access point disappears?",test:v=>v.name.toLowerCase().match(/supply|partner|access|resource|capacity|distribution/)},
-    {title:"Trust is damaged",description:"What if a failed promise, scam, or public complaint reduces confidence?",test:v=>v.name.toLowerCase().match(/trust|reputation|proof|verification|credibility/)},
-    {title:"Costs or friction rise",description:"What if the process becomes more expensive or takes much longer?",test:v=>v.name.toLowerCase().match(/cost|cash|friction|time|procurement|margin|runway/)},
-    {title:"A competitor moves first",description:"What if a credible alternative improves its offer or reaches buyers sooner?",test:v=>v.name.toLowerCase().match(/competition|alternative|distinctive|demand|distribution/)},
-    {title:"Your key assumption is wrong",description:"What if the belief with the least evidence turns out to be false?",test:v=>v.confidence==="low"}
-  ];
-  function renderStress() {
-    populateVariableSelects();
-    $("#stress-grid").innerHTML = stressPresets.map((preset,index) => {
-      const target = state.variables.find(preset.test);
-      return `<article class="stress-card"><span class="eyebrow">STRESS TEST 0${index+1}</span><h3>${preset.title}</h3><p>${preset.description}</p><button class="button button-secondary" data-stress="${index}" ${target ? "" : "disabled"}>${target ? "Apply to " + escapeHTML(target.name) : "Add a matching variable first"}</button></article>`;
-    }).join("");
-  }
-  function runStress(variableId,title,impact) {
-    const variable = variableById(variableId);
-    if (!variable) return "Add or select a variable first.";
-    const before = scenarioScore("baseline").score;
-    const old = variable.level;
-    variable.level = Math.max(0,Math.min(10,old + impact));
-    const after = scenarioScore("baseline").score;
-    variable.level = old;
-    return `This shock changes "${variable.name}" from ${old}/10 to ${Math.max(0,Math.min(10,old+impact))}/10. The heuristic alignment shifts from ${before} to ${after}. Consider a fallback for this dependency and test whether the impact estimate is realistic.`;
-  }
-
-  function addExperiment() {
-    const assumption = $("#experiment-assumption").value.trim();
-    if (!assumption) return toast("Enter an assumption to test");
-    state.experiments.unshift({id:uid(),assumption,variableId:$("#experiment-variable").value,speed:$("#experiment-speed").value,cost:$("#experiment-cost").value,action:$("#experiment-action").value.trim(),signal:$("#experiment-signal").value.trim(),status:"open",createdAt:new Date().toISOString()});
-    ["#experiment-assumption","#experiment-action","#experiment-signal"].forEach(selector => $(selector).value = "");
-    saveState(); renderExperiments(); toast("Experiment added");
-  }
-  function renderExperiments() {
-    populateVariableSelects();
-    $("#experiment-list").innerHTML = state.experiments.length ? state.experiments.map(item => {
-      const variable = variableById(item.variableId);
-      return `<article class="record-card"><div class="record-top"><h3>${escapeHTML(item.assumption)}</h3><span class="tag">${item.status === "completed" ? "Completed" : "Open"}</span></div><div class="record-meta">${escapeHTML(variable?.name || "No variable")} · ${escapeHTML(item.speed)} · ${escapeHTML(item.cost)} effort · ${new Date(item.createdAt).toLocaleDateString()}</div><p><b>Test:</b> ${escapeHTML(item.action || "Not specified")}</p><p><b>Signal:</b> ${escapeHTML(item.signal || "Not specified")}</p><div class="record-actions"><button class="button button-secondary" data-complete-experiment="${item.id}">${item.status === "completed" ? "Reopen" : "Mark completed"}</button><button class="button button-quiet" data-delete-experiment="${item.id}">Delete</button></div></article>`;
-    }).join("") : '<div class="empty-state">No experiments yet. Add one small test that could change a decision.</div>';
-  }
-
-  function addEvidence() {
-    const observation = $("#evidence-observation").value.trim();
-    if (!observation) return toast("Enter an observation");
-    state.evidence.unshift({id:uid(),observation,variableId:$("#evidence-variable").value,source:$("#evidence-source").value.trim(),confidence:Number($("#evidence-confidence").value),interpretation:$("#evidence-interpretation").value.trim(),createdAt:new Date().toISOString()});
-    ["#evidence-observation","#evidence-source","#evidence-interpretation"].forEach(selector => $(selector).value = "");
-    saveState(); renderEvidence(); toast("Evidence recorded");
-  }
-  function renderEvidence() {
-    populateVariableSelects();
-    $("#evidence-list").innerHTML = state.evidence.length ? state.evidence.map(item => {
-      const variable = variableById(item.variableId);
-      return `<article class="record-card"><div class="record-top"><h3>${escapeHTML(item.observation)}</h3><span class="tag">${["","Low","Medium","High"][item.confidence]} confidence</span></div><div class="record-meta">${escapeHTML(variable?.name || "General observation")} · ${escapeHTML(item.source || "Source not recorded")} · ${new Date(item.createdAt).toLocaleString()}</div><p><b>Interpretation:</b> ${escapeHTML(item.interpretation || "Not added")}</p><div class="record-actions"><button class="button button-quiet" data-delete-evidence="${item.id}">Delete</button></div></article>`;
-    }).join("") : '<div class="empty-state">No observations recorded. Add evidence as it arrives, including evidence that contradicts your assumptions.</div>';
-  }
-
-  function exportModel() {
-    const blob = new Blob([JSON.stringify({app:"STRATOS",version:1,exportedAt:new Date().toISOString(),model:state},null,2)],{type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url; anchor.download = "stratos-model-" + today() + ".json"; anchor.click();
-    URL.revokeObjectURL(url); toast("Model exported");
-  }
-  function importModel(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result);
-        const model = parsed.model || parsed;
-        if (!Array.isArray(model.variables) || !Array.isArray(model.links)) throw new Error("This file does not look like a STRATOS model.");
-        state = {...initialState(),...model,scenarios:{...initialState().scenarios,...(model.scenarios||{})}};
-        saveState(); renderOverview(); showView("overview"); toast("Model imported");
-      } catch (error) { alert("Could not import model: " + error.message); }
-    };
-    reader.readAsText(file);
-  }
-
-  function bindEvents() {
-    $$(".nav-link").forEach(button => button.addEventListener("click",() => showView(button.dataset.view)));
-    $$("[data-goto]").forEach(button => button.addEventListener("click",() => showView(button.dataset.goto)));
-    $("#quick-add").addEventListener("click",() => openVariableDialog());
-    $("#add-variable").addEventListener("click",() => openVariableDialog());
-    $("#variable-form").addEventListener("submit",saveVariable);
-    $("#variable-level").addEventListener("input",event => $("#level-output").textContent = event.target.value);
-    $("#variable-importance").addEventListener("input",event => $("#importance-output").textContent = event.target.value);
-    $("#add-link").addEventListener("click",addRelationship);
-    $("#link-form").addEventListener("submit",saveRelationship);
-    ["#outcome-title","#target-date","#current-position","#context-notes"].forEach(selector => $(selector).addEventListener("change",event => {
-      const key = {"#outcome-title":"outcome","#target-date":"targetDate","#current-position":"currentPosition","#context-notes":"notes"}[selector];
-      state[key] = event.target.value; saveState();
-    }));
-    $("#variable-list").addEventListener("click",event => {
-      const edit = event.target.closest("[data-edit-variable]");
-      const del = event.target.closest("[data-delete-variable]");
-      if (edit) openVariableDialog(edit.dataset.editVariable);
-      if (del && confirm("Delete this variable and its relationships?")) {
-        const id = del.dataset.deleteVariable;
-        state.variables = state.variables.filter(item => item.id !== id);
-        state.links = state.links.filter(link => link.from !== id && link.to !== id);
-        Object.values(state.scenarios).forEach(scenario => delete scenario.adjustments[id]);
-        saveState(); renderModel();
-      }
-    });
-    $("#link-list").addEventListener("click",event => {
-      const button = event.target.closest("[data-delete-link]");
-      if (button) { state.links = state.links.filter(link => link.id !== button.dataset.deleteLink); saveState(); renderModel(); }
-    });
-    $("#template-grid").addEventListener("click",event => { const button = event.target.closest("[data-template]"); if (button) applyTemplate(button.dataset.template); });
-    $("#method-templates").addEventListener("click",event => { const button = event.target.closest("[data-template]"); if (button) applyTemplate(button.dataset.template); });
-    $("#scenario-tabs").addEventListener("click",event => { const button = event.target.closest("[data-scenario]"); if (button) { activeScenario = button.dataset.scenario; renderScenarios(); } });
-    $("#scenario-content").addEventListener("input",event => {
-      const input = event.target.closest("[data-adjust]");
-      if (!input) return;
-      state.scenarios[activeScenario].adjustments[input.dataset.adjust] = Number(input.value);
-      input.nextElementSibling.textContent = Number(input.value) > 0 ? "+" + input.value : input.value;
-      $("#scenario-comparison").innerHTML = ["upside","baseline","downside"].map(key => `<article class="comparison-card"><strong>${state.scenarios[key].label}</strong><div class="score">${scenarioScore(key).score}/100</div><p>${escapeHTML(state.scenarios[key].description)}</p></article>`).join("");
-    });
-    $("#scenario-content").addEventListener("change",event => { if (event.target.matches("[data-adjust]")) saveState(); });
-    $("#reset-scenarios").addEventListener("click",() => { Object.values(state.scenarios).forEach(scenario => scenario.adjustments = {}); saveState(); renderScenarios(); });
-    $("#stress-grid").addEventListener("click",event => {
-      const button = event.target.closest("[data-stress]");
-      if (!button) return;
-      const preset = stressPresets[Number(button.dataset.stress)];
-      const variable = state.variables.find(preset.test);
-      toast(runStress(variable?.id,preset.title,-3));
-    });
-    $("#run-custom-stress").addEventListener("click",() => {
-      const title = $("#custom-stress-title").value.trim();
-      if (!title) return toast("Describe the stress condition");
-      $("#custom-stress-result").textContent = runStress($("#custom-stress-variable").value,title,Number($("#custom-stress-impact").value));
-    });
-    $("#save-experiment").addEventListener("click",addExperiment);
-    $("#experiment-list").addEventListener("click",event => {
-      const complete = event.target.closest("[data-complete-experiment]");
-      const del = event.target.closest("[data-delete-experiment]");
-      if (complete) { const item = state.experiments.find(x => x.id === complete.dataset.completeExperiment); item.status = item.status === "completed" ? "open" : "completed"; saveState(); renderExperiments(); }
-      if (del) { state.experiments = state.experiments.filter(x => x.id !== del.dataset.deleteExperiment); saveState(); renderExperiments(); }
-    });
-    $("#save-evidence").addEventListener("click",addEvidence);
-    $("#evidence-list").addEventListener("click",event => {
-      const del = event.target.closest("[data-delete-evidence]");
-      if (del) { state.evidence = state.evidence.filter(x => x.id !== del.dataset.deleteEvidence); saveState(); renderEvidence(); }
-    });
-    $("#export-button").addEventListener("click",exportModel);
-    $("#import-file").addEventListener("change",event => { if (event.target.files[0]) importModel(event.target.files[0]); event.target.value = ""; });
-  }
-
-  function init() {
-    bindEvents();
-    renderOverview();
-    renderModel();
-    $("#target-date").min = today();
-  }
-  document.addEventListener("DOMContentLoaded",init);
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const id=()=>Math.random().toString(36).slice(2,10), esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const blank=()=>({version:2,situation:{outcome:"",deadline:"",position:"",description:"",geography:"",country:"Nigeria",region:"",locality:"",institution:"",industry:"",market:"",legal:"",social:"",timeHorizon:"30 days",boundary:""},actors:[],variables:[],links:[],events:[],decisions:[],branches:[],experiments:[],evidence:[],runs:[],updatedAt:null});
+const KEY="stratos-model-v2";
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x)return {...blank(),...x,situation:{...blank().situation,...x.situation}};const old=JSON.parse(localStorage.getItem("stratos-model-v1"));if(old){const n=blank();n.situation={...n.situation,outcome:old.outcome||"",deadline:old.targetDate||"",position:old.currentPosition||"",description:old.notes||""};n.variables=(old.variables||[]).map(v=>({...v,evidenceStatus:"assumption",source:"",rangeLow:Math.max(0,v.level-2),rangeHigh:Math.min(10,v.level+2)}));n.links=old.links||[];n.experiments=old.experiments||[];n.evidence=old.evidence||[];return n;}}catch(e){console.warn(e)}return blank()}
+let state=load(),view="overview",lastRun=null;
+const save=()=>{state.updatedAt=new Date().toISOString();try{localStorage.setItem(KEY,JSON.stringify(state));$("#save-state").textContent="Saved locally"}catch(e){$("#save-state").textContent="Export recommended"}renderMetrics()};
+const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)};
+const by=(arr,key)=>arr.find(x=>x.id===key);
+const confidence=v=>({low:.55,medium:.8,high:1}[v]||.6);
+const viewNames={overview:"Overview",situation:"Situation builder",actors:"Actors & incentives",model:"System model",scenarios:"Scenario engine",events:"Events & timeline",decisions:"Strategy decisions",experiments:"Feedback lab",evidence:"Evidence & assumptions",method:"Model quality"};
+function nav(){return Object.entries(viewNames).map(([k,v])=>'<button data-view="'+k+'" class="'+(view===k?"active":"")+'">'+v+'</button>').join("")}
+function layout(){ $("#app").innerHTML='<div class="shell"><aside class="side"><div class="brand"><span class="mark">S</span><div><b>STRATOS</b><small>STRATEGIC SIMULATION LAB / V2</small></div></div><div class="nav-label">WORKSPACE</div><nav class="nav">'+nav()+'</nav><div class="side-bottom"><div>● <span id="save-state">Saved locally</span></div><button class="btn" id="export">Export model JSON</button><label class="btn" style="display:block;text-align:center">Import model<input id="import" type="file" accept=".json,application/json" hidden></label><p>Your data stays in this browser. Export backups regularly.</p></div></aside><main class="main"><header class="top"><div><span class="eyebrow">STRATEGY WORKSPACE</span><br><strong id="top-title">'+viewNames[view]+'</strong></div><div class="top-actions"><button class="btn" id="export-top">Export</button><button class="btn primary" data-view="situation">Edit situation</button></div></header><section id="content" class="view active"></section><footer class="foot"><span>STRATOS / Strategic Simulation Lab</span><span>Models are hypotheses. Reality is the test.</span></footer></main></div><div class="toast" id="toast" role="status"></div>'}
+function renderMetrics(){if(!$("#metric-actors"))return;$("#metric-actors").textContent=state.actors.length;$("#metric-vars").textContent=state.variables.length;$("#metric-events").textContent=state.events.length;$("#metric-evidence").textContent=state.evidence.length;$("#save-state").textContent="Saved locally"}
+function field(label,key,value,placeholder="",type="text"){return '<label class="field">'+label+'<input data-sit="'+key+'" type="'+type+'" value="'+esc(value)+'" placeholder="'+esc(placeholder)+'"></label>'}
+function area(label,key,value,placeholder=""){return '<label class="field">'+label+'<textarea data-sit="'+key+'" placeholder="'+esc(placeholder)+'">'+esc(value)+'</textarea></label>'}
+function select(label,key,value,opts){return '<label class="field">'+label+'<select data-sit="'+key+'">'+opts.map(o=>'<option '+(o[0]===value?"selected":"")+' value="'+esc(o[0])+'">'+esc(o[1])+'</option>').join("")+'</select></label>'}
+function card(title,body,tag=""){return '<article class="card"><div class="card-top"><h3>'+esc(title)+'</h3>'+(tag?'<span class="tag">'+esc(tag)+'</span>':"")+'</div>'+body+'</article>'}
+function section(title,sub,button=""){return '<div class="section-head"><div><span class="eyebrow">'+esc(sub)+'</span><h2>'+esc(title)+'</h2></div>'+button+'</div>'}
+function empty(msg){return '<div class="empty">'+esc(msg)+'</div>'}
+function overview(){const s=state.situation;return '<div class="hero"><span class="eyebrow">THINK IN SYSTEMS. TEST IN REALITY.</span><h1>Make the next move<br><em>less uncertain.</em></h1><p>Represent a real situation, model the people and forces inside it, create branching futures, and test how decisions may change the system over time.</p><div class="actions"><button class="btn primary" data-view="situation">Build situation</button><button class="btn" data-view="scenarios">Run simulation</button></div></div><div class="metrics"><div class="metric"><small>ACTORS</small><b id="metric-actors">0</b></div><div class="metric"><small>VARIABLES</small><b id="metric-vars">0</b></div><div class="metric"><small>EVENTS</small><b id="metric-events">0</b></div><div class="metric"><small>EVIDENCE ITEMS</small><b id="metric-evidence">0</b></div></div>'+section("Situation snapshot","CURRENT MODEL")+'<div class="panel"><h3>'+esc(s.outcome||"No desired outcome defined")+'</h3><p class="muted">'+esc([s.locality,s.region,s.country,s.industry].filter(Boolean).join(" · ")||"Add geographic and domain context to make assumptions explicit.")+'</p><p>'+esc(s.description||"Describe what is happening, who is involved, and what is at stake.")+'</p><div class="actions"><button class="btn" data-view="actors">Add actors</button><button class="btn" data-view="model">Map variables</button><button class="btn" data-view="events">Add events</button></div></div>'+section("Build in layers","RECOMMENDED WORKFLOW")+'<div class="grid3">'+card("1. Define the situation","Set boundaries, location, institutions, market and time horizon.")+card("2. Model participants","Add each actor’s goals, resources, constraints, information and likely responses.")+card("3. Simulate and update","Create branches, events and decisions. Compare consequences, then update from evidence.")+'</div><div class="notice">Realism rule: STRATOS does not automatically know local norms, private intentions, market conditions or legal rules. Enter what you can verify; label the rest as assumptions or unknowns.</div>'}
+function situation(){const s=state.situation;return '<div class="intro"><span class="eyebrow">01 / DEFINE THE WORLD</span><h1>Situation builder</h1><p>Build an editable case file. Specific context improves relevance, but location labels do not prove how people behave. Record local evidence rather than relying on stereotypes.</p></div><div class="panel"><div class="field-grid">'+field("Desired outcome","outcome",s.outcome,"What result are you trying to create?")+field("Deadline / target date","deadline",s.deadline,"","date")+field("Current position","position",s.position,"What is true right now?")+field("Time horizon","timeHorizon",s.timeHorizon,"e.g. 30 days")+'</div>'+area("Situation description","description",s.description,"What happened? What is the decision? What is at stake?")+area("Scope and boundary","boundary",s.boundary,"What is included or excluded? What would make this model irrelevant?")+'</div>'+section("Context layers","LOCAL REALITY")+'<div class="panel"><div class="field-grid">'+field("Country","country",s.country,"Country")+field("State / province / region","region",s.region,"Region")+field("City / locality / campus","locality",s.locality,"Specific locality")+field("Institution / organization","institution",s.institution,"University, agency, company…")+field("Industry / domain","industry",s.industry,"Sector or domain")+field("Market / social environment","market",s.market,"Who is present? What market?")+'</div>'+area("Legal / regulatory conditions","legal",s.legal,"Only enter rules you have checked. Include source and date.")+area("Locally observed norms / context","social",s.social,"Describe observed practices, variation, exceptions and source. Avoid treating a group as uniform.")+'</div><div class="actions"><button class="btn primary" id="save-situation">Save situation</button></div>'}
+function actors(){return '<div class="intro"><span class="eyebrow">02 / MODEL PEOPLE AND ORGANIZATIONS</span><h1>Actors & incentives</h1><p>Actors are independent participants, not labels. Model what each wants, what they can do, what they know, what constrains them, and how uncertain your interpretation is.</p></div>'+section("Participants","ACTOR REGISTER",'<button class="btn primary" id="add-actor">+ Add actor</button>')+(state.actors.length?'<div class="grid2">'+state.actors.map(a=>card(a.name,'<p>'+esc(a.role||"Role not specified")+'</p><p><b>Goals:</b> '+esc(a.goals||"Unknown")+'</p><p><b>Incentives:</b> '+esc(a.incentives||"Unknown")+'</p><p><b>Resources:</b> '+esc(a.resources||"Unknown")+'</p><p><b>Constraints:</b> '+esc(a.constraints||"Unknown")+'</p><p><b>Information:</b> '+esc(a.information||"Unknown")+'</p><p><b>Possible behaviour:</b> '+esc(a.behaviour||"Not modelled")+'</p><p class="small">Power / capacity: '+a.power+'/10 · Confidence in model: '+esc(a.confidence)+'</p><div class="actions"><button class="btn" data-edit-actor="'+a.id+'">Edit</button><button class="btn danger" data-del-actor="'+a.id+'">Delete</button></div>',a.type||"Actor")).join("")+'</div>':empty("No actors yet. Add the people, groups, organizations, competitors, gatekeepers or institutions that can affect the outcome.")) + section("Relationships between actors","INTERESTS & DEPENDENCIES")+'<div class="panel"><p class="muted">Use the relationship field on each actor to describe alliances, dependencies, competition, authority, trust, or unresolved tension. Do not assume motives without evidence.</p></div>'}
+function model(){return '<div class="intro"><span class="eyebrow">03 / SYSTEM STRUCTURE</span><h1>Variables & causal hypotheses</h1><p>Variables are measurable or at least observable conditions. Each one has a range, direction, importance, evidence status and confidence. Relationships are proposed mechanisms, not proven causation.</p></div>'+section("Variables","FACTORS THAT CAN CHANGE",'<button class="btn primary" id="add-var">+ Add variable</button>')+(state.variables.length?'<div class="record-list">'+state.variables.map(v=>'<article class="card"><div class="card-top"><h3>'+esc(v.name)+'</h3><span class="tag">'+esc(v.status||"Active")+'</span></div><p>'+esc(v.description)+'</p><div class="bar"><i style="width:'+v.level*10+'%"></i></div><p class="small">Current '+v.level+'/10 · plausible range '+v.low+'–'+v.high+' · importance '+v.importance+'/10 · '+esc(v.direction)+' · '+esc(v.evidenceStatus||"assumption")+' · confidence '+esc(v.confidence)+'</p><p class="small">Source: '+esc(v.source||"Not recorded")+'</p><div class="actions"><button class="btn" data-edit-var="'+v.id+'">Edit</button><button class="btn danger" data-del-var="'+v.id+'">Delete</button></div></article>').join("")+'</div>':empty("No variables. Add demand, access, trust, cost, time, capability, risk, constraints or other situation-specific factors."))+section("Influence map","DEPENDENCIES",'<button class="btn" id="add-link">+ Add link</button>')+(state.links.length?'<div class="panel">'+state.links.map(l=>'<p>'+esc(by(state.variables,l.from)?.name||"Missing")+' <b>'+ (l.sign==="negative"?"decreases":"increases")+' → </b>'+esc(by(state.variables,l.to)?.name||"Missing")+' <span class="tag">strength '+l.strength+'/3</span> <span class="small">'+esc(l.reason)+'</span> <button class="btn danger" data-del-link="'+l.id+'">×</button></p>').join("")+'</div>':empty("No causal links. Add only relationships for which you can explain a plausible mechanism."))}
+function events(){return '<div class="intro"><span class="eyebrow">04 / CHANGE OVER TIME</span><h1>Events & timeline</h1><p>Events can be scheduled, conditional, or uncertain. Record timing, likelihood range, who triggers or responds, and which variables they affect.</p></div>'+section("Event register","POSSIBLE DEVELOPMENTS",'<button class="btn primary" id="add-event">+ Add event</button>')+(state.events.length?'<div class="panel"><div class="timeline">'+state.events.slice().sort((a,b)=>Number(a.when)-Number(b.when)).map(e=>'<div class="timeline-item"><h3>'+esc(e.name)+' <span class="tag">T+'+esc(e.when)+'</span></h3><p class="muted">'+esc(e.kind)+' · likelihood: '+esc(e.likelihood)+' · '+esc(e.status)+'</p><p>'+esc(e.description)+'</p><p class="small">Actor: '+esc(by(state.actors,e.actorId)?.name||"Unassigned")+' · effects: '+Object.entries(e.effects||{}).map(([k,v])=>esc(by(state.variables,k)?.name||"variable")+': '+(v>0?"+":"")+v).join(", ")+'</p><div class="actions"><button class="btn" data-edit-event="'+e.id+'">Edit</button><button class="btn danger" data-del-event="'+e.id+'">Delete</button></div></div>').join("")+'</div></div>':empty("No events yet. Add foreseeable milestones, competitor moves, approvals, delays, conversations, shocks or decision triggers."))}
+function decisions(){return '<div class="intro"><span class="eyebrow">05 / CHOOSE ACTIONS</span><h1>Strategy decisions</h1><p>Compare actions by mechanism, cost, time, reversibility, downside and actor response. A strategy is not just an intention; it changes the system and may trigger counter-moves.</p></div>'+section("Decision options","AVAILABLE MOVES",'<button class="btn primary" id="add-decision">+ Add strategy</button>')+(state.decisions.length?'<div class="grid2">'+state.decisions.map(d=>card(d.name,'<p>'+esc(d.description)+'</p><p><b>Actor:</b> '+esc(by(state.actors,d.actorId)?.name||"You / unspecified")+'</p><p><b>Mechanism:</b> '+esc(d.mechanism)+'</p><p><b>Cost:</b> '+esc(d.cost)+' · <b>Time:</b> '+esc(d.time)+' · <b>Reversibility:</b> '+esc(d.reversibility)+'</p><p><b>Downside:</b> '+esc(d.downside)+'</p><p><b>Response risk:</b> '+esc(d.response)+'</p><div class="actions"><button class="btn" data-edit-decision="'+d.id+'">Edit</button><button class="btn danger" data-del-decision="'+d.id+'">Delete</button></div>',d.status||"Option")).join("")+'</div>':empty("Add at least two alternatives when possible. Include doing nothing, delaying, or gathering more information when those are real options."))}
+function scenarios(){return '<div class="intro"><span class="eyebrow">06 / RUN PLAUSIBLE FUTURES</span><h1>Scenario engine</h1><p>Run a transparent, bounded simulation. The engine propagates declared influences, applies event shocks and selected decisions, and shows which assumptions drive the result. It does not calculate true probabilities.</p></div><div class="panel"><div class="field-grid">'+select("Scenario branch","branch",lastRun?.branch||"base",[["base","Baseline / current path"],["favourable","Favourable but plausible"],["adverse","Adverse but plausible"],["custom","Custom stress path"]])+select("Strategy to test","decision",lastRun?.decision||"",[["","No strategy selected"],...state.decisions.map(d=>[d.id,d.name])])+select("Simulation horizon (steps)","steps","4",[["1","1 step"],["2","2 steps"],["4","4 steps"],["8","8 steps"]])+select("Propagation rounds per step","rounds","3",[["1","1 round"],["2","2 rounds"],["3","3 rounds"],["5","5 rounds"]])+'</div><label class="checkline"><input type="checkbox" id="include-uncertain" checked> Include uncertain events at reduced influence (sensitivity view)</label><div class="actions" style="margin-top:12px"><button class="btn primary" id="run-sim">Run simulation</button><button class="btn" id="compare-sim">Compare all branches</button></div></div><div id="simulation-result">'+(lastRun?renderRun(lastRun):empty("No simulation run yet. Define actors, variables and events, then run a branch."))+'</div>'+section("Branch assumptions","EDITABLE SCENARIO OVERLAYS")+'<div class="grid3">'+card("Baseline","Use current estimates and scheduled events.")+card("Favourable","Test modest improvements in favourable conditions; do not assume every factor improves together.")+card("Adverse","Test delays, resistance, resource loss and competing priorities.")+'</div>'}
+function renderRun(r){return '<div class="result"><strong>'+esc(r.title)+'</strong><p class="muted">Indicative alignment: '+r.score+'/100 · uncertainty band '+r.low+'–'+r.high+' · not a probability.</p><div class="bar"><i style="width:'+r.score+'%"></i></div><p>'+esc(r.summary)+'</p><h3>Step-by-step trajectory</h3><div class="timeline">'+r.steps.map(s=>'<div class="timeline-item"><b>Step '+s.step+' — '+esc(s.label)+'</b><p class="small">'+esc(s.note)+'</p></div>').join("")+'</div><h3>Largest sensitivities</h3><ul>'+r.sensitivities.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul><h3>Model warnings</h3><ul>'+r.warnings.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul><div class="actions"><button class="btn" id="save-run">Save run to history</button></div></div>'}
+function experiments(){return '<div class="intro"><span class="eyebrow">07 / SHORTEN THE FEEDBACK LOOP</span><h1>Feedback lab</h1><p>Design a low-cost real-world test that distinguishes competing explanations. Define the signal and decision threshold before running it.</p></div>'+section("Experiment queue","FAST LEARNING",'<button class="btn primary" id="add-experiment">+ New experiment</button>')+(state.experiments.length?'<div class="record-list">'+state.experiments.map(e=>card(e.name,'<p><b>Hypothesis:</b> '+esc(e.hypothesis)+'</p><p><b>Test:</b> '+esc(e.test)+'</p><p><b>Signal / threshold:</b> '+esc(e.signal)+'</p><p class="small">Cost: '+esc(e.cost)+' · signal time: '+esc(e.speed)+' · status: '+esc(e.status)+'</p><div class="actions"><button class="btn" data-toggle-exp="'+e.id+'">'+(e.status==="done"?"Reopen":"Mark complete")+'</button><button class="btn danger" data-del-exp="'+e.id+'">Delete</button></div>')).join("")+'</div>':empty("No experiments. Start with the assumption most likely to change your next decision."))}
+function evidence(){return '<div class="intro"><span class="eyebrow">08 / KEEP THE MODEL HONEST</span><h1>Evidence & assumptions</h1><p>Separate observation from interpretation. Attach provenance and confidence. Contradictory evidence is valuable; do not silently overwrite it.</p></div>'+section("Evidence register","OBSERVATIONS",'<button class="btn primary" id="add-evidence">+ Record evidence</button>')+(state.evidence.length?'<div class="record-list">'+state.evidence.map(e=>card(e.claim,'<p>'+esc(e.observation)+'</p><p><b>Interpretation:</b> '+esc(e.interpretation)+'</p><p class="small">'+esc(e.kind)+' · confidence '+esc(e.confidence)+' · '+esc(e.source)+' · '+esc(e.date)+'</p><div class="actions"><button class="btn danger" data-del-evidence="'+e.id+'">Delete</button></div>',e.status)).join("")+'</div>':empty("No evidence recorded. Mark important claims as verified, estimated, assumed or unknown."))}
+function method(){return '<div class="intro"><span class="eyebrow">MODEL QUALITY / READ BEFORE TRUSTING OUTPUTS</span><h1>How STRATOS reasons — and where it stops</h1><p>STRATOS is an explicit, editable causal sketch and scenario workbench. It is not an oracle, digital twin, market database or validated forecasting model.</p></div><div class="grid2">'+card("What it calculates","A bounded heuristic alignment from variable levels, importance, direction and confidence. Declared links propagate damped effects across a limited number of rounds. Events and selected strategies modify the starting conditions.")+card("What it cannot know","Private intentions, hidden constraints, actual market demand, legal validity, cultural norms, or future actions unless you enter evidence. It cannot infer these from a country, gender, school or job title.")+card("Uncertainty","Variable ranges and confidence create an indicative sensitivity band, not a statistical confidence interval. Event likelihood labels are scenario inputs, not calibrated probabilities.")+card("Causality","A link means you propose a mechanism. It does not prove causation. Delays, feedback loops, non-linear effects and omitted variables can materially change outcomes.")+card("Human actors","Actors may react strategically, misunderstand, cooperate, resist, delay or change priorities. The engine only applies responses you explicitly model; it does not read minds.")+card("Validation","Use local sources, timestamps, counterexamples and cheap experiments. Compare model predictions with observed outcomes and revise the assumptions.")+'</div>'+section("Quality checks","BEFORE YOU ACT")+'<div class="panel"><ul><li>Have you represented the strongest opposing actor and their incentives?</li><li>Have you included a no-action or wait-and-learn option?</li><li>Which variable is least evidenced but most influential?</li><li>What would falsify your preferred explanation?</li><li>What local law, norm or market fact needs independent verification?</li><li>What is the earliest observable signal that the strategy is failing?</li></ul></div>'}
+function render(){const f={overview,situation,actors,model,scenarios,events,decisions,experiments,evidence,method};$("#content").innerHTML=f[view]();$("#top-title").textContent=viewNames[view];$$("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));renderMetrics()}
+function go(v){view=v;render();window.scrollTo({top:0,behavior:"smooth"})}
+function openForm(title,fields,existing,callback){const d=document.createElement("dialog");d.innerHTML='<div class="dialog-head"><h2>'+title+'</h2><button class="btn" data-close>Close</button></div><form id="dynamic-form">'+fields.map(f=>{let val=existing?.[f.key]??f.value??"";if(f.type==="textarea")return '<label class="field">'+f.label+'<textarea name="'+f.key+'" placeholder="'+esc(f.placeholder||"")+'">'+esc(val)+'</textarea></label>';if(f.type==="select")return '<label class="field">'+f.label+'<select name="'+f.key+'">'+f.options.map(o=>'<option value="'+esc(o[0])+'" '+(o[0]===val?"selected":"")+'>'+esc(o[1])+'</option>').join("")+'</select></label>';return '<label class="field">'+f.label+'<input name="'+f.key+'" type="'+(f.type||"text")+'" value="'+esc(val)+'" placeholder="'+esc(f.placeholder||"")+'" '+(f.required?"required":"")+'></label>'}).join("")+'<div class="actions"><button class="btn primary" type="submit">Save</button></div></form>';document.body.append(d);d.showModal();d.querySelector("[data-close]").onclick=()=>d.close();d.querySelector("form").onsubmit=e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));callback(data);d.close();d.remove();save();render()};d.onclose=()=>d.remove()}
+const actorFields=[["name","Name",1],["type","Type",0,"select",[["person","Person"],["group","Group"],["company","Company"],["institution","Institution"],["competitor","Competitor"],["other","Other"]]],["role","Role / position"],["goals","Goals / desired outcomes",0,"textarea"],["incentives","Incentives and pressures",0,"textarea"],["resources","Resources and capabilities",0,"textarea"],["constraints","Constraints, dependencies and costs",0,"textarea"],["information","What they know / may not know",0,"textarea"],["behaviour","Plausible responses and evidence",0,"textarea"],["relationship","Relationships with other actors",0,"textarea"],["power","Power / capacity (0–10)",0,"number"],["confidence","Confidence in this actor model",0,"select",[["low","Low"],["medium","Medium"],["high","High"]]]];
+const variableFields=[["name","Name",1],["description","Description",0,"textarea"],["level","Current level (0–10)",0,"number"],["low","Plausible low (0–10)",0,"number"],["high","Plausible high (0–10)",0,"number"],["importance","Importance (1–10)",0,"number"],["direction","Effect on desired outcome",0,"select",[["positive","Supports outcome"],["negative","Works against outcome"],["mixed","Mixed / uncertain"]]],["confidence","Confidence",0,"select",[["low","Low"],["medium","Medium"],["high","High"]]],["evidenceStatus","Evidence status",0,"select",[["verified","Verified / directly observed"],["estimated","Estimated"],["assumption","Assumption"],["unknown","Unknown"]]],["source","Source / date"],["notes","Notes / counterevidence",0,"textarea"]];
+const eventFields=[["name","Event name",1],["description","What happens?",0,"textarea"],["when","Time step (1 = next)",0,"number"],["kind","Event type",0,"select",[["scheduled","Scheduled"],["conditional","Conditional"],["shock","External shock"],["actor","Actor move"]]],["likelihood","Likelihood label",0,"select",[["low","Low"],["medium","Medium"],["high","High"],["unknown","Unknown"]]],["status","Status",0,"select",[["possible","Possible"],["expected","Expected"],["confirmed","Confirmed"],["contingent","Contingent"]]],["actorId","Actor involved",0,"select",[["","Unassigned"],...state.actors.map(a=>[a.id,a.name])]],["effectText","Variable effects (e.g. varId:+2, varId:-1)",0,"textarea"]];
+const decisionFields=[["name","Strategy name",1],["description","Action",0,"textarea"],["actorId","Who acts?",0,"select",[["","You / unspecified"],...state.actors.map(a=>[a.id,a.name])]],["mechanism","Why should it work?",0,"textarea"],["cost","Cost / resources"],["time","Time to effect"],["reversibility","Reversibility",0,"select",[["high","High"],["medium","Medium"],["low","Low"]]],["downside","Failure mode / downside",0,"textarea"],["response","Likely response by others",0,"textarea"]];
+function fieldsFrom(spec){return spec.map(x=>({key:x[0],label:x[1],required:!!x[2],type:x[3]||"text",options:x[4]||[]}))}
+function saveActor(data,old){state.actors=old?state.actors.map(a=>a.id===old.id?{...old,...data,power:Number(data.power)||0}:a):[...state.actors,{...data,id:id(),power:Number(data.power)||0}]}
+function saveVar(data,old){let v={...data,id:old?.id||id(),level:clamp(data.level),low:clamp(data.low),high:clamp(data.high),importance:Math.max(1,Math.min(10,Number(data.importance)||5))};if(v.low>v.high)[v.low,v.high]=[v.high,v.low];if(old)state.variables=state.variables.map(x=>x.id===old.id?v:x);else state.variables.push(v)}
+const clamp=n=>Math.max(0,Math.min(10,Number(n)||0));
+function parseEffects(text){const out={};String(text||"").split(/[,;\n]+/).forEach(p=>{const m=p.trim().match(/^([^:]+):\s*([+-]?\d+(?:\.\d+)?)$/);if(m&&by(state.variables,m[1].trim()))out[m[1].trim()]=Number(m[2])});return out}
+function runEngine(branch,decisionId,steps,rounds,includeUncertain){const levels={};state.variables.forEach(v=>levels[v.id]=clamp(v.level));const notes=[],warnings=[],stepRows=[];const chosen=by(state.decisions,decisionId);if(!state.variables.length)warnings.push("No variables: output cannot be meaningfully calculated.");if(state.variables.some(v=>v.evidenceStatus==="unknown"||v.confidence==="low"))warnings.push("Some influential variables are unknown or low-confidence.");if(!state.actors.length)warnings.push("No actors modelled: strategic responses are missing.");if(!state.links.length)warnings.push("No causal links: knock-on effects are not represented.");if(state.situation.legal&&!/source|checked|verified/i.test(state.situation.legal))warnings.push("Legal context has no explicit verification marker; independently check current rules.");
+if(branch==="favourable")state.variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]+.7);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]-.4)});
+if(branch==="adverse")state.variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]-.8);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]+.6)});
+if(chosen){notes.push("Applied strategy: "+chosen.name+". Its declared mechanism is not guaranteed; cost "+(chosen.cost||"unspecified")+".");if(chosen.actorId)notes.push("Actor assigned: "+(by(state.actors,chosen.actorId)?.name||"unknown")+".");}
+const usedEvents=[];
+for(let t=1;t<=steps;t++){let eventNotes=[];state.events.filter(e=>Number(e.when)<=t&&Number(e.when)>t-1).forEach(e=>{if(e.likelihood==="low"&&!includeUncertain)return;const factor=e.likelihood==="low"?.35:e.likelihood==="medium"?.65:e.likelihood==="unknown"?.25:1;Object.entries(e.effects||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v)*factor)});eventNotes.push(e.name+" ("+e.likelihood+" likelihood)");usedEvents.push(e.id)});
+if(chosen&&t===1){const effectText=chosen.effectText||"";Object.entries(parseEffects(effectText)).forEach(([k,v])=>levels[k]=clamp(levels[k]+v));if(effectText)eventNotes.push("Strategy effects applied");}
+for(let r=0;r<rounds;r++){const delta={};state.links.forEach(l=>{if(levels[l.from]===undefined||levels[l.to]===undefined)return;const sign=l.sign==="negative"?-1:1;const shift=(levels[l.from]-5)*.12*Number(l.strength||1)*sign;delta[l.to]=(delta[l.to]||0)+shift});Object.entries(delta).forEach(([k,v])=>levels[k]=clamp(levels[k]+Math.max(-1,Math.min(1,v))*.55))}
+const actorLine=state.actors.map(a=>a.name+": "+(a.behaviour||a.incentives||"response unspecified")).slice(0,3).join("; ");stepRows.push({step:t,label:eventNotes.length?eventNotes.join("; "):"No declared event",note:"System updated through "+rounds+" damped propagation round(s)."+(actorLine?" Actor response assumptions: "+actorLine:"")});}
+let total=0,weight=0;state.variables.forEach(v=>{const polarity=v.direction==="positive"?1:v.direction==="negative"?-1:0;const contribution=(levels[v.id]-5)*polarity*Number(v.importance||1)*confidence(v.confidence);total+=contribution;weight+=Number(v.importance||1)*confidence(v.confidence)});const score=weight?Math.round(Math.max(0,Math.min(100,50+total/(weight*5)*50))):50;
+let uncertainty=state.variables.reduce((a,v)=>a+(Number(v.high??10)-Number(v.low??0))*Number(v.importance||1)*(1-confidence(v.confidence)),0)/(Math.max(1,state.variables.reduce((a,v)=>a+Number(v.importance||1),0)))*3;const low=Math.max(0,Math.round(score-uncertainty)),high=Math.min(100,Math.round(score+uncertainty));
+const sensitivities=state.variables.slice().sort((a,b)=>Math.abs((levels[b.id]-5)*b.importance)-Math.abs((levels[a.id]-5)*a.importance)).slice(0,4).map(v=>v.name+" ("+levels[v.id].toFixed(1)+"/10; "+v.evidenceStatus+")");
+if(state.events.some(e=>e.likelihood==="unknown"))warnings.push("At least one event has unknown likelihood; branch results depend on whether it occurs.");
+if(chosen?.downside)warnings.push("Strategy downside entered: "+chosen.downside);
+return {id:id(),branch,title:({base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch])+" · "+(chosen?.name||"No selected strategy"),decision:decisionId,score,low,high,summary:"This is an indicative weighted alignment from the current entered variables. It is not a success probability, forecast or calibrated confidence interval. Final variable levels: "+state.variables.map(v=>v.name+" "+levels[v.id].toFixed(1)+"/10").join("; "),steps:stepRows,sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:usedEvents};}
+function saveRun(r){state.runs.unshift(r);state.runs=state.runs.slice(0,30);save();toast("Simulation saved")}
+function openEvent(old){const spec=fieldsFrom(eventFields);const data={...old,effectText:old?Object.entries(old.effects||{}).map(([k,v])=>k+":"+(v>0?"+":"")+v).join(", "):""};openForm(old?"Edit event":"Add event",spec,data,d=>{const e={...d,id:old?.id||id(),when:Math.max(1,Number(d.when)||1),effects:parseEffects(d.effectText)};delete e.effectText;if(old)state.events=state.events.map(x=>x.id===old.id?e:x);else state.events.push(e)})}
+function openEvidence(){openForm("Record evidence",[{key:"claim",label:"Claim / topic",required:true},{key:"observation",label:"What did you observe?",type:"textarea"},{key:"interpretation",label:"Interpretation / alternative explanations",type:"textarea"},{key:"kind",label:"Evidence type",type:"select",options:[["direct","Direct observation"],["document","Document / public data"],["interview","Interview / report"],["estimate","Estimate"],["assumption","Assumption"],["unknown","Unknown"]]},{key:"status",label:"Status",type:"select",options:[["supports","Supports claim"],["contradicts","Contradicts claim"],["mixed","Mixed"],["unresolved","Unresolved"]]},{key:"confidence",label:"Confidence",type:"select",options:[["low","Low"],["medium","Medium"],["high","High"]]},{key:"source",label:"Source and date"},{key:"date",label:"Date",value:new Date().toISOString().slice(0,10)}],null,d=>state.evidence.unshift({...d,id:id()}))}
+function addExperiment(){openForm("Design a feedback experiment",[{key:"name",label:"Experiment name",required:true},{key:"hypothesis",label:"Assumption / hypothesis",type:"textarea"},{key:"test",label:"Smallest real-world test",type:"textarea"},{key:"signal",label:"Signal and decision threshold",type:"textarea"},{key:"cost",label:"Cost / effort"},{key:"speed",label:"Time to signal"},{key:"status",label:"Status",type:"select",options:[["open","Open"],["running","Running"],["done","Completed"]]}],null,d=>state.experiments.unshift({...d,id:id(),status:d.status||"open"}))}
+function bindContent(){const c=$("#content");c.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.view)go(b.dataset.view);
+if(b.id==="save-situation"){state.situation={...state.situation};$$("[data-sit]").forEach(x=>state.situation[x.dataset.sit]=x.value);save();toast("Situation saved")}
+if(b.id==="add-actor")openForm("Add actor",fieldsFrom(actorFields),null,d=>saveActor(d));
+if(b.dataset.editActor){const a=by(state.actors,b.dataset.editActor);openForm("Edit actor",fieldsFrom(actorFields),a,d=>saveActor(d,a))}
+if(b.dataset.delActor){if(confirm("Delete this actor?")){state.actors=state.actors.filter(a=>a.id!==b.dataset.delActor);state.events.forEach(x=>{if(x.actorId===b.dataset.delActor)x.actorId=""});save();render()}}
+if(b.id==="add-var")openForm("Add variable",fieldsFrom(variableFields),{level:5,low:3,high:7,importance:5,direction:"positive",confidence:"medium",evidenceStatus:"assumption"},d=>saveVar(d));
+if(b.dataset.editVar){const v=by(state.variables,b.dataset.editVar);openForm("Edit variable",fieldsFrom(variableFields),v,d=>saveVar(d,v))}
+if(b.dataset.delVar){if(confirm("Delete variable and its links?")){const k=b.dataset.delVar;state.variables=state.variables.filter(v=>v.id!==k);state.links=state.links.filter(l=>l.from!==k&&l.to!==k);state.events.forEach(e=>delete e.effects[k]);save();render()}}
+if(b.id==="add-link")openForm("Add causal hypothesis",[{key:"from",label:"From variable",type:"select",options:state.variables.map(v=>[v.id,v.name])},{key:"to",label:"To variable",type:"select",options:state.variables.map(v=>[v.id,v.name])},{key:"sign",label:"Relationship",type:"select",options:[["positive","Increase tends to increase"],["negative","Increase tends to decrease"]]},{key:"strength",label:"Strength (1–3)",type:"number",value:2},{key:"reason",label:"Mechanism / evidence",type:"textarea"}],null,d=>{if(d.from===d.to)return toast("Choose two different variables");state.links.push({...d,id:id(),strength:Math.max(1,Math.min(3,Number(d.strength)||1))})});
+if(b.dataset.delLink){state.links=state.links.filter(x=>x.id!==b.dataset.delLink);save();render()}
+if(b.id==="add-event")openEvent();if(b.dataset.editEvent)openEvent(by(state.events,b.dataset.editEvent));if(b.dataset.delEvent){state.events=state.events.filter(x=>x.id!==b.dataset.delEvent);save();render()}
+if(b.id==="add-decision")openForm("Add strategy option",fieldsFrom(decisionFields).concat([{key:"effectText",label:"Direct variable effects (variableId:+2, variableId:-1)",type:"textarea"}]),null,d=>state.decisions.push({...d,id:id()}));
+if(b.dataset.editDecision){const d=by(state.decisions,b.dataset.editDecision);openForm("Edit strategy",fieldsFrom(decisionFields).concat([{key:"effectText",label:"Direct variable effects (variableId:+2)",type:"textarea"}]),d,x=>state.decisions=state.decisions.map(q=>q.id===d.id?{...d,...x}:q))}
+if(b.dataset.delDecision){state.decisions=state.decisions.filter(x=>x.id!==b.dataset.delDecision);save();render()}
+if(b.id==="run-sim"||b.id==="compare-sim"){const branch=$("#content [data-sit='branch']")?.value||"base";const decision=$("#content [data-sit='decision']")?.value||"";const steps=Number($("#content [data-sit='steps']")?.value||4);const rounds=Number($("#content [data-sit='rounds']")?.value||3);const uncertain=$("#include-uncertain")?.checked??true;lastRun=runEngine(branch,decision,steps,rounds,uncertain);if(b.id==="compare-sim"){const all=["base","favourable","adverse"].map(k=>runEngine(k,decision,steps,rounds,uncertain));$("#simulation-result").innerHTML='<div class="grid3">'+all.map(r=>card(r.title,'<b>'+r.score+'/100</b><p>Indicative band '+r.low+'–'+r.high+'</p><p>'+esc(r.summary)+'</p>')).join("")+'</div>'+renderRun(lastRun)}else $("#simulation-result").innerHTML=renderRun(lastRun)}
+if(b.id==="save-run"&&lastRun)saveRun(lastRun);
+if(b.id==="add-experiment")addExperiment();if(b.dataset.toggleExp){const x=by(state.experiments,b.dataset.toggleExp);x.status=x.status==="done"?"open":"done";save();render()}
+if(b.dataset.delExp){state.experiments=state.experiments.filter(x=>x.id!==b.dataset.delExp);save();render()}
+if(b.id==="add-evidence")openEvidence();if(b.dataset.delEvidence){state.evidence=state.evidence.filter(x=>x.id!==b.dataset.delEvidence);save();render()}
+});
+}
+function bindGlobal(){document.addEventListener("click",e=>{const b=e.target.closest("button[data-view]");if(b&&b.closest(".top"))go(b.dataset.view)});
+$("#export").onclick=$("#export-top").onclick=()=>{const blob=new Blob([JSON.stringify({app:"STRATOS",version:2,exportedAt:new Date().toISOString(),model:state},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="stratos-model-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(a.href)};
+$("#import").onchange=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);const m=x.model||x;if(!m.situation||!Array.isArray(m.variables)||!Array.isArray(m.actors))throw Error("Not a STRATOS v2 model");state={...blank(),...m,situation:{...blank().situation,...m.situation}};save();render();toast("Model imported")}catch(err){alert("Import failed: "+err.message)}};r.readAsText(file);e.target.value=""};
+}
+function init(){layout();bindContent();bindGlobal();render();renderMetrics()}
+document.addEventListener("DOMContentLoaded",init);
 })();
