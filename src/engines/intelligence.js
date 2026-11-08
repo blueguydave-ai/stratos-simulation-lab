@@ -13,8 +13,8 @@ function dependencyStatus(model,step,levels,resources){
   else if(d.fromType==="resource"){const r=resources.find(x=>x.id===d.fromId);exists=!!r;actual=r?Number(r.level):null;label=r?.name||"Missing resource";}
   else if(d.fromType==="actor"){const a=actors.find(x=>x.id===d.fromId);exists=!!a;actual=a?clamp(a.capability??a.capacity??5):null;label=a?.name||"Missing actor";}
   else if(d.fromType==="constraint"){const c=list(model,"constraints").find(x=>x.id===d.fromId);exists=!!c;actual=c?(!c.disabled&&(Number(c.when)||1)<=step&&(c.until===undefined||c.until===""||step<=Number(c.until))?1:0):null;label=c?.name||"Missing constraint";}
-  const op=d.operator||"gte",passed=exists&&step>=start&&(op==="lte"?actual<=expected:op==="gt"?actual>expected:op==="lt"?actual<expected:actual>=expected);
-  return {id:d.id,name:d.name||"Dependency",step,fromType:d.fromType||"variable",from:label,actual,operator:op,threshold:expected,passed,hard:d.hard!==false,requiredBy:d.requiredBy||"",reason:!exists?"Source record is missing":step<start?"Not active yet":passed?"Prerequisite satisfied":"Prerequisite not satisfied"};
+  const op=d.operator||"gte",passed=exists&&(step<start||(op==="lte"?actual<=expected:op==="gt"?actual>expected:op==="lt"?actual<expected:actual>=expected));
+  return {id:d.id,name:d.name||"Dependency",step,fromType:d.fromType||"variable",from:label,actual,active:step>=start,operator:op,threshold:expected,passed,hard:d.hard!==false,requiredBy:d.requiredBy||"",reason:!exists?"Source record is missing":step<start?"Not active yet":passed?"Prerequisite satisfied":"Prerequisite not satisfied"};
  });
 }
 function enhance(model,run,options){
