@@ -20,3 +20,8 @@ Model a system by adding variables, constraints, influences, and trends. Compare
 
 ## Privacy and cost
 The app is static and runs in your browser. It requires no paid backend, API key, or subscription.
+
+
+## Netlify deployment
+
+The app is configured for Netlify hosting, including the optional secure AI function. Follow [docs/NETLIFY_SETUP.md](docs/NETLIFY_SETUP.md) to connect the repository, configure the server-side OpenAI key and test AI analysis.
