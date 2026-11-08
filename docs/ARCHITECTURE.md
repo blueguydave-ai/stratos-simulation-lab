@@ -86,3 +86,7 @@ Reputation events are user-entered records about an actor, with a scheduled disc
 
 ## Dynamic alliances, factions and AI influence
 Groups are cloned per run. Scheduled events can recruit, remove or switch members, alter support, cohesion, coordination or conformity, or dissolve a group. AI system records model human-operated tools, agents, recommendation/ranking systems, generators, screening and automation. Each records operator, target actors, activation step, adoption, contextual reliability, oversight, bias/failure notes and explicit variable effects. Effects are scaled by adoption, reliability and oversight; targeted actors receive a small role-sensitive response modifier. These are editable assumptions, not empirical claims about AI performance or universal effects.
+
+
+## AI competition, collaboration and systemic disruption
+`aiEvents` represents explicitly scheduled interactions such as AI-vs-AI competition, human–AI collaboration, automation races, algorithmic influence operations, outages, security incidents, gatekeeping and coordination. Each event names participating systems, timing, intensity, base success assumption, separate success/failure effects, governance and human-impact notes. The engine applies bounded intensity-scaled effects and records the sampled outcome. This is a scenario mechanism, not a claim that the engine predicts AI system capability, strategic intent, or real-world success rates. Active groups are evaluated at each step so scheduled membership and cohesion changes affect subsequent collective-action calculations.
