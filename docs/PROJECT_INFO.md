@@ -212,3 +212,13 @@ Each context builds the complete STRATOS model structure, with starter actors, v
 - No country or culture is assumed. Legal and social context fields request local evidence; avoid treating a national population as homogeneous.
 - Scenario combinations are generic scaffolds. Some stage/environment combinations may be irrelevant to a particular context and should be edited or removed.
 - The library should continue to grow through deeper domain-specific specializations, not merely by increasing combinatorial counts.
+
+
+## 200-million-combination template catalogue (2026-11-08)
+- Preserves the 5,000 curated, structured starting templates across 13 broad domains and 36 context families.
+- Adds six selectable refinement dimensions: scale/reach (5), interaction pattern (8), resource condition (5), uncertainty profile (5), primary objective (8), and feedback speed (5).
+- The six dimensions produce 40,000 combinations per starting template (5 × 8 × 5 × 5 × 8 × 5). Across 5,000 starting templates, the theoretical catalogue contains exactly 200,000,000 combinations.
+- Combinations are generated on demand. The browser does not download, store or iterate over 200 million objects. Search filters the compact 5,000-entry base catalogue; selected refinements are passed to the model builder and become editable model metadata, variables, an event and an experiment.
+- This is a combinatorial design space, not 200 million independently authored, researched or empirically validated scenarios. The template library is a starting point; users must verify and refine assumptions.
+- UI supports domain, context family and text search plus six refinement selectors. Results show up to 150 base contexts at a time; search/filter narrows the list.
+- Validation still needed in a real browser: mobile layout, selector behaviour, apply/merge, model persistence, and end-to-end deployment.
