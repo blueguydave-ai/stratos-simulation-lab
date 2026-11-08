@@ -44,15 +44,37 @@ function simulate(model,options){
      if(occurred){Object.entries(event.effects||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v));});stepNotes.push("Event occurred: "+event.name);}
      else stepNotes.push("Event not applied: "+event.name);
    }
-   if(t===1&&chosen){
+   if(chosen){
      actors.forEach(actor=>{
-       const effects=parseEffects(actor.responseEffects,variables);if(!Object.keys(effects).length)return;
+       const effects=parseEffects(actor.responseEffects,variables);
+       if(!Object.keys(effects).length)return;
+       const triggerId=actor.triggerVariable||"";
+       const observed=triggerId?levels[triggerId]:undefined;
+       const threshold=Number(actor.triggerThreshold??5);
+       const op=actor.triggerOperator||"gte";
+       const triggered=!triggerId||observed===undefined||
+         (op==="gte"&&observed>=threshold)||(op==="lte"&&observed<=threshold)||
+         (op==="gt"&&observed>threshold)||(op==="lt"&&observed<threshold);
+       if(!triggered){actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:false,responded:false,probability:0});return;}
        const chance=Math.max(0,Math.min(1,Number(actor.responseChance??45)/100));
        const responded=rng()<chance;
-       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,probability:chance,responded});
-       if(responded){Object.entries(effects).forEach(([k,v])=>{levels[k]=clamp(levels[k]+v*.45);});stepNotes.push("Applied explicitly modelled response: "+actor.name);}
+       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:true,responded,probability:chance,triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null});
+       if(responded){
+         Object.entries(effects).forEach(([k,v])=>{levels[k]=clamp(levels[k]+v*.45);});
+         stepNotes.push("Actor policy response ("+(actor.policy||"custom")+"): "+actor.name);
+       }
      });
    }
+   // Schedule each delayed link once per time step, outside propagation rounds.
+   links.forEach(link=>{
+     const delay=Math.max(0,Math.min(20,Number(link.delay)||0));
+     if(delay===0||levels[link.from]===undefined||levels[link.to]===undefined)return;
+     const sign=link.sign==="negative"?-1:1;
+     const strength=Math.max(0,Math.min(3,Number(link.strength)||1));
+     const shift=(levels[link.from]-5)*.12*strength*sign;
+     const damped=Math.max(-1,Math.min(1,shift))*.55;
+     if(Math.abs(damped)>.0001&&t+delay<=steps)pending.push({at:t+delay,variableId:link.to,amount:damped,label:"Delayed influence: "+(variables.find(v=>v.id===link.from)?.name||"variable")+" → "+(variables.find(v=>v.id===link.to)?.name||"variable")});
+   });
    for(let round=0;round<rounds;round++){
      const delta={};
      links.forEach(link=>{
@@ -61,8 +83,7 @@ function simulate(model,options){
        const shift=(levels[link.from]-5)*.12*strength*sign;
        const damped=Math.max(-1,Math.min(1,shift))*.55;
        const delay=Math.max(0,Math.min(20,Number(link.delay)||0));
-       if(delay>0){if(Math.abs(damped)>.0001)pending.push({at:t+delay,variableId:link.to,amount:damped,label:"Delayed influence: "+(variables.find(v=>v.id===link.from)?.name||"variable")+" → "+(variables.find(v=>v.id===link.to)?.name||"variable")});}
-       else delta[link.to]=(delta[link.to]||0)+damped;
+       if(delay===0)delta[link.to]=(delta[link.to]||0)+damped;
      });
      Object.entries(delta).forEach(([k,v])=>levels[k]=clamp(levels[k]+Math.max(-1,Math.min(1,v))));
    }
@@ -77,10 +98,10 @@ function simulate(model,options){
  const sensitivities=variables.map(v=>({name:v.name||"Unnamed variable",impact:Math.abs((levels[v.id]-5)*(Number(v.importance)||1)),level:levels[v.id],evidence:v.evidenceStatus||"unspecified"})).sort((a,b)=>b.impact-a.impact).slice(0,5).map(v=>v.name+" (final "+Number(v.level).toFixed(1)+"/10; "+v.evidence+")");
  if(events.some(e=>e.likelihood==="unknown"))warnings.push("At least one event has unknown likelihood; event occurrence is sampled for this run, not forecast.");
  if(chosen?.downside)warnings.push("Strategy downside to monitor: "+chosen.downside);
- if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are queued; increase the horizon to observe effects beyond the current run.");
+ if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are scheduled once per link per step, using the source state at scheduling time. Effects beyond the run horizon are not shown.");
  const branchName={base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch]||branch;
  const summary="Indicative weighted alignment only. Final state: "+variables.map(v=>v.name+" "+Number(levels[v.id]).toFixed(1)+"/10").join("; ")+".";
- return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length}};
+ return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
 }
 root.STRATOSSimulation=Object.freeze({simulate,parseEffects});
 })(window);
