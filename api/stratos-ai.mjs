@@ -92,7 +92,7 @@ function readBody(req) {
 
 function parseStructuredAnalysis(raw, finishReason) {
   const text = String(raw || '').trim();
-  const cleaned = text.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim();
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   const first = cleaned.indexOf('{');
   const last = cleaned.lastIndexOf('}');
   const candidates = [text, cleaned];
