@@ -111,7 +111,7 @@ Simulation runs can be saved in local browser storage and reopened or deleted fr
 - Diagnostics expose connected-variable leverage candidates, resource/dependency bottleneck candidates, missing-dimension questions, multi-step feedback cycles, competing incoming causes, two-link causal paths and direct/one-link indirect strategy-effect conflicts with declared variable direction.
 - Controlled experiments compare a baseline with a single variable, resource or constraint-toggle intervention. Sensitivity analysis perturbs variables one at a time with a fixed seed.
 - These tools are model-conditional heuristics. They do not establish causal proof, calibrated probabilities, complete coverage or empirical predictive validity. Existing actor learning, feedback, event shocks, causal links and scenario branches remain in place.
-- UI adds **System dynamics & strategic intelligence** and a prerequisite stage to **Your workflow**. Existing workspaces remain accessible.
+- The default interface is experiment-first. Users describe a situation and a question; the world builder constructs a provisional run-local model. Detailed modelling workspaces are optional and grouped under Advanced model.
 - Verification added to core and engine contract tests; real browser/device, accessibility, live deployment and empirical calibration remain separate verification tasks.
 
 
