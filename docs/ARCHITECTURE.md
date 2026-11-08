@@ -15,6 +15,13 @@ The current app is a static GitHub Pages site. This increment adds zero third-pa
 6. Evidence and context (next) — source, date, scope, sample, licence, confidence, counterevidence and review cadence.
 7. External intelligence (later) — optional AI adapter and retrieval; never silently invent simulation outcomes.
 
+## System dynamics and intelligence
+- Constraints are first-class records, with hard/soft behaviour, schedule, trigger, caps and explicit effects.
+- Resources are stocks with initial amount, capacity, consumption, replenishment and depletion consequences.
+- Dependencies are explicit prerequisites; unmet hard prerequisites suppress the selected strategy's direct effects and are reported.
+- The intelligence layer compares controlled interventions, computes one-at-a-time sensitivity, flags leverage/bottleneck candidates, feedback loops, competing incoming causes, second-order paths and direct/one-link unintended effects.
+- Observed-vs-simulated calibration reports descriptive error for entered observations with provenance; it is not statistical validation.
+
 ## Canonical record principles
 - Every situation is scoped by outcome, boundary and time horizon.
 - Actors have their own goals, incentives, resources, constraints, information and plausible responses.
