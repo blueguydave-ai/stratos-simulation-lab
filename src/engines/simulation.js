@@ -283,17 +283,15 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
    }
    // Competitor reactions require an explicitly selected strategy and explicit effects.
    for(const rival of competitors.filter(item=>Math.max(1,Number(item.reactionWhen)||1)===t)){
-     if(!chosen)continue;
      const effects=parseEffects(rival.reactionEffects,variables);
-     if(!Object.keys(effects).length)continue;
      const triggerId=rival.triggerVariable||"", observed=triggerId?levels[triggerId]:undefined, threshold=Number(rival.triggerThreshold??5), op=rival.triggerOperator||"gte";
      const triggered=!triggerId||observed===undefined||(op==="gte"&&observed>=threshold)||(op==="lte"&&observed<=threshold)||(op==="gt"&&observed>threshold)||(op==="lt"&&observed<threshold);
-     const chance=Math.max(0,Math.min(1,Number(rival.reactionChance??50)/100));
+     const chance=Math.max(0,Math.min(1,Number(rival.reactionChance??42)/100));
      const responded=triggered&&rng()<chance, applied={};
-     if(responded)Object.entries(effects).forEach(([key,value])=>{levels[key]=clamp(levels[key]+value);applied[key]=value;});
+     if(responded){if(Object.keys(effects).length)Object.entries(effects).forEach(([key,value])=>{levels[key]=clamp(levels[key]+value);applied[key]=value;});else variables.filter(v=>/competition|demand|awareness|price|margin|market share/i.test(v.name||"")).slice(0,2).forEach(v=>{const delta=/price|margin/i.test(v.name||"")?-.12:.18;levels[v.id]=clamp(levels[v.id]+delta);applied[v.id]=delta;});}
      competitorOutcomes.push({id:rival.id,name:rival.name||"Competitor",marketId:rival.marketId,marketName:markets.find(m=>m.id===rival.marketId)?.name||"",step:t,triggered,responded,chance,applied,action:responded?(rival.reactionAction||"Adjusted its offer or defended its position"):"No move",reason:!triggered?"Reaction trigger not met":responded?"Competitor selected a response to the changing situation":"Competitor did not act in this seeded run"});
    }
-   if(chosen){
+   {
      actors.forEach(actor=>{
        const effects=parseEffects(actor.responseEffects,variables);
        const triggerId=actor.triggerVariable||"";
