@@ -10,7 +10,7 @@ function parseEffects(text,variables){
 }
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
- const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
+ const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
  const rng=randomFrom(hash(seedText)), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
@@ -28,7 +28,7 @@ function simulate(model,options){
  Object.entries(model.scenarioOverrides?.[branch]||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v));});
  if(branch==="favourable")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]+.7);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]-.4);});
  if(branch==="adverse")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]-.8);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]+.6);});
- const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],pending=[];
+ const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],marketOutcomes=[],pending=[];
  if(!variables.length)warnings.push("No variables: the simulation has no measurable state.");
  if(!actors.length)warnings.push("No actors modelled: strategic responses are missing.");
  if(!links.length)warnings.push("No causal links: knock-on effects are limited.");
@@ -125,6 +125,23 @@ function simulate(model,options){
      institutionOutcomes.push({id:rule.id,name:rule.name||"Institutional rule",step:t,triggered,scopeMatched:scopeOk,applied,reason:!triggered?"Trigger condition not met":!scopeOk?"No targeted actor matched":"Rule activated"});
      if(triggered&&scopeOk)stepNotes.push("Institutional/environmental rule: "+(rule.name||"Unnamed rule"));
    }
+   // One scheduled market snapshot; factors are editable scenario heuristics, not live data.
+   for(const market of markets.filter(item=>Math.max(1,Number(item.when)||1)===t)){
+     const price=Math.max(0,Math.min(10,Number(market.priceIndex??5))), purchasingPower=Math.max(0,Math.min(10,Number(market.purchasingPower??5)));
+     const sensitivity=Math.max(0,Math.min(10,Number(market.priceSensitivity??5))), saturation=Math.max(0,Math.min(10,Number(market.saturation??5)));
+     const competition=Math.max(0,Math.min(10,Number(market.competition??5))), substitutes=Math.max(0,Math.min(10,Number(market.substitutes??5))), capacity=Math.max(0,Math.min(10,Number(market.capacity??5)));
+     const priceFactor=Math.max(.25,Math.min(1.5,1-((price-purchasingPower)/10)*(sensitivity/5)));
+     const competitionFactor=1-competition*.04, substituteFactor=1-substitutes*.035, saturationFactor=1-saturation*.05;
+     const demandPotential=priceFactor*competitionFactor*substituteFactor*saturationFactor, capacityFactor=Math.max(.2,Math.min(1.5,capacity/5));
+     const salesFactor=Math.max(.2,Math.min(1.5,Math.min(demandPotential,capacityFactor))), revenueFactor=Math.max(.2,Math.min(1.5,salesFactor*(price/5)));
+     const applied={};
+     const demandVariable=variables.find(v=>v.id===market.demandVariableId||String(v.name||"").toLowerCase()===String(market.demandVariableId||"").toLowerCase());
+     const revenueVariable=variables.find(v=>v.id===market.revenueVariableId||String(v.name||"").toLowerCase()===String(market.revenueVariableId||"").toLowerCase());
+     if(demandVariable){const change=(salesFactor-1)*2;levels[demandVariable.id]=clamp(levels[demandVariable.id]+change);applied[demandVariable.id]=Number(change.toFixed(3));}
+     if(revenueVariable){const change=(revenueFactor-1)*2;levels[revenueVariable.id]=clamp(levels[revenueVariable.id]+change);applied[revenueVariable.id]=Number(change.toFixed(3));}
+     const outcome={id:market.id,name:market.name||"Unnamed market",type:market.type||"unspecified",segment:market.segment||"",step:t,priceFactor:Number(priceFactor.toFixed(3)),competitionFactor:Number(competitionFactor.toFixed(3)),substituteFactor:Number(substituteFactor.toFixed(3)),saturationFactor:Number(saturationFactor.toFixed(3)),demandPotential:Number(demandPotential.toFixed(3)),capacityFactor:Number(capacityFactor.toFixed(3)),salesFactor:Number(salesFactor.toFixed(3)),revenueFactor:Number(revenueFactor.toFixed(3)),applied,reason:!demandVariable&&!revenueVariable?"No linked demand or revenue variable":"Market snapshot applied"};
+     marketOutcomes.push(outcome);stepNotes.push("Market snapshot: "+outcome.name+" · sales factor "+outcome.salesFactor.toFixed(2)+" · revenue factor "+outcome.revenueFactor.toFixed(2));
+   }
    if(chosen){
      actors.forEach(actor=>{
        const effects=parseEffects(actor.responseEffects,variables);
@@ -190,7 +207,7 @@ function simulate(model,options){
  if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are scheduled once per link per step, using the source state at scheduling time. Effects beyond the run horizon are not shown.");
  const branchName={base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch]||branch;
  const summary="Indicative weighted alignment only. Final state: "+variables.map(v=>v.name+" "+Number(levels[v.id]).toFixed(1)+"/10").join("; ")+".";
- return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
+ return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,markets:marketOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
 }
 root.STRATOSSimulation=Object.freeze({simulate,parseEffects});
 })(window);
