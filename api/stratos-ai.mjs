@@ -179,3 +179,9 @@ export default async function handler(req, res) {
     let analysis;
     try { analysis = parseStructuredAnalysis(output, candidate && candidate.finishReason); }
     catch (error) { return send(res, 502, { error: error.message }, cors); }
+
+    return send(res, 200, { ok: true, provider: "Google Gemini", model: modelName, analysis }, cors);
+  } catch (error) {
+    return send(res, 502, { error: "Could not reach Gemini: " + String(error.message || error).slice(0, 250) }, cors);
+  }
+}
