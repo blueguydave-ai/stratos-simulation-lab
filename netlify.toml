@@ -1,0 +1,6 @@
+[build]
+  command = "node scripts/prepare-netlify.mjs"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
