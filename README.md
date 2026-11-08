@@ -1,19 +1,30 @@
 # STRATOS — Strategic Simulation Lab
 
-A local-first strategic simulation workspace. Describe the situation and the experiment you want to test; STRATOS helps construct a provisional world model, simulate plausible interactions, compare scenarios, and identify useful real-world feedback experiments.
+STRATOS is an experiment-first strategic simulation workspace.
+
+## How to use it
+
+1. Describe what is happening.
+2. State what you want to test.
+3. Run the experiment.
+
+STRATOS constructs a provisional world model around the experiment: relevant actors and groups, motivations, variables, relationships, processes, resources, constraints, information boundaries and possible events. It then simulates actions, reactions and feedback over time.
+
+Templates are optional starting points. Advanced workspaces are optional tools for inspecting, correcting or extending the generated model. You do not need to manually populate the system before running a simulation.
 
 ## Deployment
 
-The project is configured for **Vercel**:
-- Static frontend is built into `dist/` by `npm run build`.
-- The optional Gemini endpoint runs from `api/stratos-ai.mjs`.
-- Configure `GEMINI_API_KEY` and, optionally, `STRATOS_AI_MODEL` and `STRATOS_ACCESS_CODE` in Vercel environment variables.
-- The Gemini key must remain server-side and must never be placed in browser code.
+The project is configured for Vercel:
+- `npm run build` prepares the static frontend in `dist/`.
+- `api/stratos-ai.mjs` is the optional server-side Gemini endpoint.
+- Set `GEMINI_API_KEY` in Vercel environment variables. Optionally set `STRATOS_AI_MODEL` and `STRATOS_ACCESS_CODE`.
+- Never put the Gemini API key in browser code or commit it to the repository.
 
-## Important limitations
+## Limitations
 
-- Simulated actions and outcomes are plausible scenario possibilities, not validated predictions of real people or events.
-- Scores and model dynamics are heuristic unless independently calibrated against observed data.
-- Context templates are editable starting structures, not verified representations of every industry, jurisdiction, institution or culture.
-- AI analysis is optional and does not silently rewrite the canonical model.
-- Export JSON backups to preserve work.
+- Generated actions and reactions are plausible scenario possibilities, not predictions of specific people.
+- Generated motives, processes and constraints are assumptions unless supported by supplied evidence.
+- Heuristic scores are not calibrated probabilities.
+- Templates are editable starting structures, not verified case studies.
+- AI analysis is optional and does not silently rewrite the model.
+- Export JSON backups to preserve local work.
