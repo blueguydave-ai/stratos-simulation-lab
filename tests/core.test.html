@@ -10,5 +10,7 @@ test("normalization preserves existing situation",()=>{const m=STRATOSCore.norma
 test("validation catches dangling links",()=>{const m=STRATOSCore.freshModel();m.links=[{id:"l",from:"missing",to:"also-missing"}];return STRATOSCore.validateModel(m).errors.some(x=>x.code==="link.dangling")});
 test("domain registry exposes business and cultural packs",()=>{const ids=STRATOSDomains.list().map(x=>x.id);return ids.includes("business")&&ids.includes("cross-cultural")&&new Set(ids).size===ids.length});
 test("unknown domain lookup is safe",()=>STRATOSDomains.get("not-a-domain")===null);
+test("validation safely reports malformed null records",()=>{const m=STRATOSCore.freshModel();m.actors=[null];m.links=[null];m.variables=[null];const r=STRATOSCore.validateModel(m);return r.valid===false&&r.errors.some(x=>x.code==="record.invalid")});
+test("validation rejects out-of-range variable levels",()=>{const m=STRATOSCore.freshModel();m.variables=[{id:"v",level:12,low:0,high:10}];return STRATOSCore.validateModel(m).errors.some(x=>x.code==="variable.level")});
 document.querySelector("#results").textContent=out.join("\n")+"\n\n"+out.filter(x=>x.startsWith("PASS")).length+"/"+out.length+" checks passed.";
 </script></body></html>
