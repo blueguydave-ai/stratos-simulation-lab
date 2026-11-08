@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (power structures and dependency increment)
+Last updated: 2026-11-08 (institutions and environmental constraints increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -34,7 +34,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 - `src/core/model.js`: versioned canonical model contract, normalization, structural validation.
 - `src/core/validation.js`: validation module boundary.
 - `src/domains/registry.js`: initial general, business, brokerage, negotiation, relationships, institutional and cross-cultural packs.
-- `src/engines/simulation.js`: deterministic seeded scenario engine, event sampling, explicit strategy effects, actor-response heuristics, communication/belief updates, directional trust, group action, power/dependency modifiers, causal propagation and delayed causal effects.
+- `src/engines/simulation.js`: deterministic seeded scenario engine, event sampling, explicit strategy effects, actor-response heuristics, communication/belief updates, directional trust, group action, power/dependency modifiers, institutional rules and environmental constraints, causal propagation and delayed causal effects.
 - `docs/ARCHITECTURE.md`: layered architecture and dependency policy.
 - `tests/core.test.html`: core contract checks.
 - `tests/engine.test.html`: simulation engine contract checks.
@@ -80,3 +80,7 @@ It is a decision-support and scenario exploration tool, not a universal predicto
 
 ## Product principle
 STRATOS must be able to represent what it does not know. It should help users think more clearly, test strategies cheaply and update from reality—not manufacture certainty.
+
+
+### Institutions and environmental constraints
+Added the Institutions & Environment workspace and an `institutions` model collection. Rules support regulation, procedure, informal norm, market barrier, geography/infrastructure, resource limit and other categories; actor targeting; start step; optional variable trigger; severity; enforcement/reach; facilitate/restrict/neutral response effect; explicit variable effects; and source/exception/uncertainty notes. Activated rules apply entered variable effects at their start step and can influence targeted actor response propensity from that step onward. The response modifier is a transparent bounded heuristic (severity × enforcement × 0.15), not a legal, cultural or empirical claim. Four engine contract tests were added; browser execution remains outstanding.
