@@ -312,7 +312,7 @@ function semanticSearch(query,filters={}){
   const nameWords=[...new Set((item.name+" "+item.subcategory).toLowerCase().split(/[^a-z0-9]+/).map(normalizeToken).filter(Boolean))];
   const matched=terms.filter(term=>term.length>2&&hayWords.some(word=>word===term||word.startsWith(term)||term.startsWith(word)));
   const exact=q.tokens.filter(term=>nameWords.some(word=>word===term||word.startsWith(term)||term.startsWith(word)));
-  const phraseHits=q.phrases.filter(p=>{const keys=p.split(" / ");return keys.some(k=>hay.includes(normalizeToken(k)));});
+  const phraseHits=q.phrases.filter(p=>{const keys=p.split(" / ");return keys.some(k=>k.toLowerCase().split(/[^a-z0-9]+/).map(normalizeToken).filter(Boolean).some(term=>hayWords.includes(term)));});
   const score=matched.length*1.2+exact.length*2+(item.subcategory.toLowerCase().includes(q.raw.trim())?8:0)+phraseHits.length*2;
   const reasons=[];if(exact.length)reasons.push("Matches your wording: "+exact.slice(0,4).join(", "));if(phraseHits.length)reasons.push(...phraseHits);if(matched.length)reasons.push("Related ideas: "+matched.slice(0,5).join(", "));
   return {...item,matchScore:score,matchReasons:reasons};
