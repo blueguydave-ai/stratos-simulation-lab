@@ -230,3 +230,13 @@ Each context builds the complete STRATOS model structure, with starter actors, v
 - Runtime checks confirmed 5,000 base entries, 40,000 refinements per base entry and 200,000,000 combinations. Sampled model builds include all six selected dimensions.
 - All 5,000 generated base templates passed the current model validator (0 invalid). App JavaScript syntax check passed; model normalization passed.
 - Not yet verified: live browser rendering, touch/mobile usability, full apply/merge workflow, localStorage persistence or the latest hosted deployment.
+
+
+## Expanded specialist context taxonomy (2026-11-08)
+- Supersedes the earlier 36-family taxonomy: the current library contains 139 specialist context families across 20 broad domains.
+- New specialist coverage includes professional agencies, manufacturing, retail, hospitality, nonprofits, family business succession, distressed-business turnaround, hardware and SaaS development, pricing and product recalls, open source, enterprise account growth, channels, lead qualification, customer support, ecommerce, insurance and loan brokerage, freight, talent representation, M&A, procurement sourcing, salary and contract negotiation, joint ventures, debt recovery, vendor disputes, distributed teams, workplace grievances, performance management, change adoption, portfolio prioritization, admissions and scholarships, student clubs, exam preparation, school-parent coordination, caregiving, shared housing, relationship transitions, online moderation, internal politics, advocacy, executive buy-in, crisis communications, enterprise software, data governance, cybersecurity, AI procurement and workforce redesign.
+- Additional broad domains: Health & care; Finance & investment; Logistics & supply chain; Legal & compliance; Media & entertainment; Housing & infrastructure; Safety & crisis.
+- These additions bring the taxonomy to 20 domains and 139 families. The 5,000 ready-made base templates are now distributed across all 139 families (35 or 36 per family) instead of leaving newer families unrepresented.
+- Search index includes each family's title, description, intended outcome, variables and specialist synonyms. Multiple search terms must all match. The 5,000-entry base catalogue is cached in memory to avoid rebuilding search records on every keystroke.
+- Six refinements remain: 5 scales × 8 interaction patterns × 5 resource conditions × 5 uncertainty profiles × 8 objectives × 5 feedback cycles = 40,000 refinements per base template; 5,000 × 40,000 = 200,000,000 combinations.
+- Verification target: all 5,000 generated templates must pass the current model validator. Browser layout, search UX and apply/merge behaviour still require real-device testing.
