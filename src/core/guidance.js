@@ -59,7 +59,7 @@ function analyze(model){
  };
  const questions=domainQuestions[domain]||["What important actor, constraint or alternative is missing?","Which assumption would most change the decision if it were wrong?","What is the earliest observable signal that the strategy is working or failing?"];
  const checks=[
-  ["Outcome defined",has(s.outcome)],["Scope defined",has(s.boundary)],["At least one actor",count(m.actors)>0],["At least five variables",count(m.variables)>=5],["Causal mechanisms",count(m.links)>0],["Strategy option",count(m.decisions)>0],["Events and timing",count(m.events)>0],["Evidence attached",count(m.evidence)>0],["Feedback test",count(m.experiments)>0]
+  ["Outcome defined",has(s.outcome)],["Scope defined",has(s.boundary)],["At least one actor",count(m,"actors")>0],["At least five variables",count(m,"variables")>=5],["Causal mechanisms",count(m,"links")>0],["Strategy option",count(m,"decisions")>0],["Events and timing",count(m,"events")>0],["Evidence attached",count(m,"evidence")>0],["Feedback test",count(m,"experiments")>0]
  ];
  const ready=Math.round(checks.filter(x=>x[1]).length/checks.length*100);
  return {domain,question:text(s.simulationQuestion||details.simulationQuestion),readiness:ready,checks,suggestions,questions,summary:suggestions.length?"Address the highest-priority gaps before treating the run as decision support.":"The basic model structure is present. Check the assumptions, compare branches and validate the most important outputs against reality."};
