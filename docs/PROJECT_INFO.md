@@ -1,6 +1,6 @@
 # STRATOS — Project Information & Handoff
 
-Last updated: 2026-11-08 (information network and narrative increment)
+Last updated: 2026-11-08 (dynamic alliances and AI influence increment)
 Repository: https://github.com/blueguydave-ai/stratos-simulation-lab
 Live app: https://blueguydave-ai.github.io/stratos-simulation-lab/
 Default branch: main
@@ -119,3 +119,7 @@ Communication records now support narrative label, framing, recorded persuasion 
 
 ### Reputation, status signals and audience-specific perceptions
 Added a Reputation & audience perceptions editor to the Actors workspace. Reputation events support target actor, positive/negative signal, magnitude, source credibility, evidence status (verified/contested/unverified), audience scope (everyone/selected actors/group), schedule and source notes. The engine tracks run-local subject-observer reputation scores and applies a small bounded modifier to responses toward a selected strategy initiator. This is an explicit heuristic, not a universal law of social status or independent verification of claims. Four tests were defined; browser execution remains outstanding.
+
+
+### Dynamic alliances and AI influence increment
+Added `groupEvents` for recruitment, joining, exit/defection, switching coalitions, support-share changes, cohesion/coordination/conformity changes and dissolution. Group structures are cloned per run. Added `aiSystems` for human-operated tools, autonomous agents, recommendation/ranking systems, content generation, scoring/screening and robotics. Records capture operator, affected actors, activation step, adoption, contextual reliability, oversight, bias, failure modes, evidence/uncertainty notes and explicit variable effects. Effects are scaled by adoption, reliability and oversight; targeted actor response propensity receives a small role-sensitive AI modifier. This is not an empirical AI capability model. Five engine tests were added; browser execution remains outstanding.
