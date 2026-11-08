@@ -47,7 +47,7 @@ function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
  const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], markets=model.markets||[], segments=model.segments||[], competitors=model.competitors||[], journeys=model.journeys||[], journeyPoints=model.journeyPoints||[], negotiations=(model.negotiations||[]).map(item=>({...item})), negotiationParties=model.negotiationParties||[], decisionInteractions=model.decisionInteractions||[], reputationEvents=model.reputationEvents||[], groupEvents=model.groupEvents||[], aiSystems=model.aiSystems||[], aiEvents=model.aiEvents||[], informationFlows=model.informationFlows||[], groups=(model.groups||[]).map(item=>({...item})), links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
- const rng=randomFrom(hash(seedText)), levels={};
+ const rng=randomFrom(hash(seedText)), actionRng=randomFrom(hash(seedText+"|actor-actions")), competitorRng=randomFrom(hash(seedText+"|competitor-actions")), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
  const actorBeliefs={},beliefTimeline=[];
  actors.forEach(actor=>{
@@ -289,7 +289,7 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
      const triggerId=rival.triggerVariable||"", observed=triggerId?levels[triggerId]:undefined, threshold=Number(rival.triggerThreshold??5), op=rival.triggerOperator||"gte";
      const triggered=!triggerId||observed===undefined||(op==="gte"&&observed>=threshold)||(op==="lte"&&observed<=threshold)||(op==="gt"&&observed>threshold)||(op==="lt"&&observed<threshold);
      const chance=Math.max(0,Math.min(1,Number(rival.reactionChance??42)/100));
-     const responded=triggered&&rng()<chance, applied={};
+     const responded=triggered&&competitorRng()<chance, applied={};
      if(responded){if(Object.keys(effects).length)Object.entries(effects).forEach(([key,value])=>{levels[key]=clamp(levels[key]+value);applied[key]=value;});else variables.filter(v=>/competition|demand|awareness|price|margin|market share/i.test(v.name||"")).slice(0,2).forEach(v=>{const delta=/price|margin/i.test(v.name||"")?-.12:.18;levels[v.id]=clamp(levels[v.id]+delta);applied[v.id]=delta;});}
      competitorOutcomes.push({id:rival.id,name:rival.name||"Competitor",marketId:rival.marketId,marketName:markets.find(m=>m.id===rival.marketId)?.name||"",step:t,triggered,responded,chance,applied,action:responded?(rival.reactionAction||"Adjusted its offer or defended its position"):"No move",reason:!triggered?"Reaction trigger not met":responded?"Competitor selected a response to the changing situation":"Competitor did not act in this seeded run"});
    }
@@ -314,10 +314,10 @@ for(const item of due){if(levels[item.variableId]!==undefined){levels[item.varia
        const aiSystemsForActor=aiSystems.filter(ai=>Math.max(1,Number(ai.when)||1)<=t&&(String(ai.targetActors||"all").toLowerCase()==="all"||String(ai.targetActors||"").split(/[,;]+/).some(x=>[actor.id.toLowerCase(),String(actor.name||"").toLowerCase()].includes(x.trim().toLowerCase()))));const aiModifier=aiSystemsForActor.reduce((sum,ai)=>{const exposure=clamp(ai.adoption??5)/10*clamp(ai.reliability??5)/10,oversight=clamp(ai.oversight??5)/10,direction=ai.role==="replace"?-1:ai.role==="mediate"?.5:ai.role==="shape_attention"?.35:1;return sum+direction*exposure*(.5+oversight*.5)*.04;},0);const modifiers={aiInfluence:aiModifier,goalAlignment:Math.max(-5,Math.min(5,Number(actor.goalAlignment)||0))*.025,incentivePressure:(clamp(actor.incentivePressure??5)-5)*.012,resourceCapacity:(clamp(actor.resourceCapacity??5)-5)*.018,perceivedRisk:(clamp(actor.riskTolerance??5)-clamp(actor.perceivedRisk??5))*.012,informationConfidence:(clamp(actor.informationConfidence??5)-5)*.008,lossAversion:-(clamp(actor.lossAversion??5)/10)*(Math.max(0,clamp(actor.perceivedRisk??5)-5)/5)*.08,statusQuoBias:-(clamp(actor.statusQuoBias??5)-5)*.012,cognitiveLoad:-(clamp(actor.cognitiveLoad??5)-5)*.012,urgency:(clamp(actor.urgency??5)-5)*.012,socialProof:(clamp(actor.socialProofSignal??5)-5)*.008,skepticism:-(clamp(actor.skepticism??5)-5)*.008,reputation:reputationModifier,powerStructure:powerModifier,institutionalEnvironment:institutionalModifier};
        const adjustment=Object.values(modifiers).reduce((sum,value)=>sum+value,0);
        const chance=Math.max(0,Math.min(1,baseChance+adjustment));
-       const responded=rng()<chance;
+       const responded=actionRng()<chance;
        const policy=actor.policy||"custom";
        const knownBeliefs=actorBeliefs[actor.id]||{};const cues={uncertainty:variables.some(v=>knownBeliefs[v.id]!==undefined&&/uncertainty|information|trust|risk/i.test(v.name||"")&&clamp(knownBeliefs[v.id])<4)?1:0,opportunity:variables.some(v=>knownBeliefs[v.id]!==undefined&&/demand|interest|opportunity|growth/i.test(v.name||"")&&clamp(knownBeliefs[v.id])>6)?1:0,competition:competitors.length?1:0,change:events.some(e=>Math.max(1,Number(e.when)||1)===t)?1:0};
-       const action=chooseActorAction(actor,{cues,levels,step:t,chosen},rng);
+       const action=chooseActorAction(actor,{cues,levels,step:t,chosen},actionRng);
        const responseDescription=responded?action.label:"Did not act; considered: "+action.label;
        const hasEffects=Object.keys(effects).length>0;
        const automaticEffects=responded?actionVariableEffects(action.id,variables,levels):{};
