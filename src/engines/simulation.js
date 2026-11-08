@@ -12,16 +12,18 @@ function chooseActorAction(actor,context,rng){
  const alignment=Number(actor.goalAlignment??0),incentive=Number(actor.incentivePressure??5),resources=Number(actor.resourceCapacity??5),risk=Number(actor.perceivedRisk??5),tolerance=Number(actor.riskTolerance??5),urgency=Number(actor.urgency??5),skepticism=Number(actor.skepticism??5),status=Number(actor.statusQuoBias??5),load=Number(actor.cognitiveLoad??5),loss=Number(actor.lossAversion??5);
  const objections=String(actor.objections||"")+" "+String(actor.observableConstraint||"")+" "+String(actor.privateBelief||"");
  const policy=String(actor.policy||"").toLowerCase();
+ const goalText=String(actor.goal||actor.objective||actor.goals||"").toLowerCase();
+ const roleText=String(actor.role||actor.type||"").toLowerCase();
  const cues=context.cues||{};
  const candidates=[
   {id:"investigate",label:"Looked for more information",why:"The actor had unanswered questions or uncertainty",score:1+skepticism*.16+(10-clamp(actor.informationConfidence??5))*.12+(cues.uncertainty||0)*.25},
-  {id:"negotiate",label:"Asked for different terms or made a counterproposal",why:"The actor saw room to improve the terms",score:1+Math.max(0,alignment)*.13+incentive*.12+(cues.opportunity||0)*.3+(policy==="negotiate"?2:0)},
-  {id:"cooperate",label:"Supported the move and took a cooperative step",why:"The move appeared to support the actor's interests",score:1+Math.max(0,alignment)*.2+incentive*.12+(policy==="cooperate"?2:0)},
-  {id:"resist",label:"Objected, challenged the move or protected their position",why:"The move threatened an interest, preference or boundary",score:1+Math.max(0,-alignment)*.2+risk*.1+(/object|risk|loss|unfair|disagree|concern|protect|cannot|can't|not able/i.test(objections)?2:0)+(policy==="resist"?2:0)},
-  {id:"delay",label:"Waited, postponed a decision or asked for more time",why:"The actor preferred to avoid committing immediately",score:1+status*.16+load*.12+risk*.08+(10-urgency)*.1+(policy==="delay"?2:0)},
-  {id:"withdraw",label:"Stepped back or pursued another option",why:"Continuing looked less attractive than disengaging",score:Math.max(.2,1+(5-alignment)*.15+(risk-tolerance)*.12+(5-resources)*.1+(policy==="withdraw"?2:0))},
-  {id:"compete",label:"Pursued an alternative or tried to protect their position",why:"The actor had an incentive to compete rather than cooperate",score:1+incentive*.1+(cues.competition||0)*.35+(policy==="compete"?2:0)},
-  {id:"adapt",label:"Changed approach to keep the opportunity moving",why:"The actor adjusted to the situation rather than abandoning the goal",score:1+resources*.1+urgency*.1+(cues.change||0)*.25+(policy==="adapt"?2:0)}
+  {id:"negotiate",label:"Asked for different terms or made a counterproposal",why:"The actor saw room to improve the terms",score:1+Math.max(0,alignment)*.13+incentive*.12+(cues.opportunity||0)*.3+(policy==="negotiate"?2.5:0)+(/buyer|seller|deal|price|cost|fee|terms|acquir|purchase|sell|buy|licen|agreement/i.test(goalText+" "+roleText)?1.2:0)},
+  {id:"cooperate",label:"Supported the move and took a cooperative step",why:"The move appeared to support the actor's interests",score:1+Math.max(0,alignment)*.2+incentive*.12+(policy==="cooperate"?2.5:0)+(/collaborat|partner|support|work together|joint/i.test(goalText)?1.2:0)},
+  {id:"resist",label:"Objected, challenged the move or protected their position",why:"The move threatened an interest, preference or boundary",score:1+Math.max(0,-alignment)*.2+risk*.1+(/object|risk|loss|unfair|disagree|concern|protect|cannot|can't|not able/i.test(objections)?2:0)+(policy==="resist"?2.5:0)+(/protect|avoid|prevent|oppose|control|independent/i.test(goalText)?1.2:0)},
+  {id:"delay",label:"Waited, postponed a decision or asked for more time",why:"The actor preferred to avoid committing immediately",score:1+status*.16+load*.12+risk*.08+(10-urgency)*.1+(policy==="delay"?2.5:0)+(/wait|later|uncertain|not sure|more time/i.test(goalText)?1.2:0)},
+  {id:"withdraw",label:"Stepped back or pursued another option",why:"Continuing looked less attractive than disengaging",score:Math.max(.2,1+(5-alignment)*.15+(risk-tolerance)*.12+(5-resources)*.1+(policy==="withdraw"?2.5:0)+(/exit|leave|avoid|reduce exposure/i.test(goalText)?1.2:0))},
+  {id:"compete",label:"Pursued an alternative or tried to protect their position",why:"The actor had an incentive to compete rather than cooperate",score:1+incentive*.1+(cues.competition||0)*.35+(policy==="compete"?2.5:0)+(/win|market|share|outperform|alternative|rival/i.test(goalText+" "+roleText)?1.2:0)},
+  {id:"adapt",label:"Changed approach to keep the opportunity moving",why:"The actor adjusted to the situation rather than abandoning the goal",score:1+resources*.1+urgency*.1+(cues.change||0)*.25+(policy==="adapt"?2.5:0)+(/improv|adapt|adjust|solve|deliver/i.test(goalText)?1.2:0)}
  ];
  const total=candidates.reduce((n,x)=>n+Math.max(.05,x.score),0);let pick=rng()*total;
  for(const item of candidates){pick-=Math.max(.05,item.score);if(pick<=0)return item;}
