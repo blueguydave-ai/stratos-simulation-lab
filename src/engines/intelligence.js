@@ -27,7 +27,7 @@ function enhance(model,run,options){
  const chosen=list(m,"decisions").find(x=>x.id===run.decision);
  const dependencyAtStart=dependencyStatus(m,1,levels,resources.map(r=>({...r,level:resourceState[r.id]})));
  const blocked=dependencyAtStart.filter(x=>x.hard&&!x.passed&&(!x.requiredBy||x.requiredBy===run.decision));
- if(blocked.length){run.warnings.push("Strategy prerequisite warning: "+blocked.map(x=>x.name).join(", ")+". Declared direct strategy effects were still applied; interpret this run as a stress test, not an executable plan.");}
+ if(blocked.length){run.warnings.push("Strategy blocked by unmet hard prerequisite(s): "+blocked.map(x=>x.name).join(", ")+". Direct strategy effects were suppressed; actor and environmental dynamics still run.");run.blockedPrerequisites=blocked;}
  timeline.forEach((snap,index)=>{
   const step=snap.step||index+1, baseState={...snap.levels};
   const state=previousBase&&previousEnhanced?Object.fromEntries(Object.keys(baseState).map(id=>[id,clamp(Number(previousEnhanced[id]??baseState[id])+Number(baseState[id])-Number(previousBase[id]??baseState[id]))])):{...baseState};
@@ -95,5 +95,14 @@ function sensitivity(model,options){
  return rows.sort((a,b)=>Math.abs(b.scoreChange)-Math.abs(a.scoreChange));
 }
 const baseSimulate=root.STRATOSSimulation.simulate;
-root.STRATOSSimulation=Object.freeze({...root.STRATOSSimulation,simulate:function(model,options){return enhance(model,baseSimulate(model,options),options);},analyze,runExperiment,sensitivity,enhance});
+root.STRATOSSimulation=Object.freeze({...root.STRATOSSimulation,simulate:function(model,options){
+ const opts=options||{},chosen=list(model,"decisions").find(x=>x.id===opts.decisionId);
+ const initial={};list(model,"variables").forEach(v=>initial[v.id]=clamp(v.level??5));
+ const stocks=list(model,"resources").map(r=>({...r,level:Number(r.initial??r.level??r.capacity??0)}));
+ const blocked=chosen?dependencyStatus(model,1,initial,stocks).filter(x=>x.hard&&!x.passed&&(!x.requiredBy||x.requiredBy===chosen.id)):[];
+ let run;
+ if(blocked.length){const shadow={...model,decisions:list(model,"decisions").map(d=>d.id===chosen.id?{...d,effectText:""}:d)};run=baseSimulate(shadow,opts);}
+ else run=baseSimulate(model,opts);
+ return enhance(model,run,opts);
+},analyze,runExperiment,sensitivity,calibrate,enhance});
 })(window);
