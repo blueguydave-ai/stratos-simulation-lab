@@ -1,0 +1,16 @@
+/* STRATOS domain-pack registry — extend domain knowledge without changing the core. */
+(function(root){
+"use strict";
+const packs=[
+{id:"general",name:"General situation",description:"Neutral starting point for any human-centred situation.",entities:["actor","resource","variable","event","decision"],questions:["What outcome matters?","Who can influence it?","What constraints shape available actions?","What evidence would change the model?"]},
+{id:"business",name:"Business & markets",description:"Customers, competitors, suppliers, pricing, channels, cash and market structure.",entities:["customer_segment","competitor","supplier","offer","channel","transaction","resource"],questions:["Who pays and who uses the offer?","What alternatives can customers choose?","What changes demand, margin or cash timing?","Which market claims have current evidence?"]},
+{id:"brokerage",name:"Brokerage & intermediation",description:"Matching parties, trust, access, information asymmetry, fees and transaction completion.",entities:["buyer","seller","broker","lead","mandate","commission","deal"],questions:["Who controls access to each side?","What proof establishes authority and trust?","Who bears non-performance risk?","What event makes commission payable?"]},
+{id:"negotiation",name:"Negotiation & influence",description:"Interests, alternatives, bargaining power, information, concessions and commitment.",entities:["party","interest","alternative","offer","concession","commitment"],questions:["What does each party value?","What alternatives exist if no agreement is reached?","What information is private or uncertain?","What makes an agreement credible?"]},
+{id:"relationships",name:"Relationships & social dynamics",description:"Interpersonal expectations, boundaries, trust, reputation, communication and group context.",entities:["person","relationship","expectation","boundary","interaction","reputation"],questions:["What has each person directly said or done?","What are plausible alternative explanations?","What boundaries or obligations apply?","What would disconfirm your interpretation?"]},
+{id:"institution",name:"Campus & institutions",description:"Formal rules, informal practices, gatekeepers, peer networks and institutional processes.",entities:["institution","authority","student_group","rule","process","resource"],questions:["Which written rules apply?","Who has formal authority and informal influence?","Where do observed practices differ from official procedures?","Which claims need local verification?"]},
+{id:"cross-cultural",name:"Cross-cultural context",description:"Context-specific norms, institutions, language, variation and intercultural interaction.",entities:["cultural_context","institution","norm_claim","subgroup","interaction"],questions:["Which setting and subgroup are being described?","What is the source, date and sample for each norm claim?","What within-group variation and exceptions exist?","Could behaviour have multiple culturally plausible meanings?"]}
+];
+function list(){return packs.map(p=>({...p,entities:[...p.entities],questions:[...p.questions]}));}
+function get(id){const p=packs.find(x=>x.id===id);return p?{...p,entities:[...p.entities],questions:[...p.questions]}:null;}
+root.STRATOSDomains=Object.freeze({list,get});
+})(window);
