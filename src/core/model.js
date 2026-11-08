@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
   const VERSION = 3;
-  const COLLECTIONS = ["actors","variables","links","events","communications","relationships","powerRelations","institutions","groups","decisions","branches","experiments","evidence","runs"];
+  const COLLECTIONS = ["actors","variables","links","events","communications","relationships","powerRelations","institutions","markets","groups","decisions","branches","experiments","evidence","runs"];
   const CONTEXT_FIELDS = ["country","region","locality","institution","industry","market","legal","social","timeHorizon","boundary"];
   const id = () => "st_" + Math.random().toString(36).slice(2,10);
   const freshModel = () => ({
