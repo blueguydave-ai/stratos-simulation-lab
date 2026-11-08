@@ -307,9 +307,11 @@ function semanticSearch(query,filters={}){
  const q=expandQuery(query),terms=q.expanded;
  if(!q.raw.trim())return list({...filters,limit:filters.limit||150}).map(item=>({...item,matchScore:0,matchReasons:[]}));
  const scored=baseEntries.filter(x=>(!filters.category||x.category===filters.category)&&(!filters.subcategory||x.subcategory===filters.subcategory)).map(item=>{
-  const name=normalizeToken(item.name+" "+item.subcategory),hay=normalizeToken([item.name,item.description,item.category,item.subcategory,item.searchText,searchAliases[item.subcategory]||""].join(" "));
-  const matched=terms.filter(term=>term.length>2&&hay.includes(term));
-  const exact=q.tokens.filter(term=>name.includes(term));
+  const source=[item.name,item.description,item.category,item.subcategory,item.searchText,searchAliases[item.subcategory]||""].join(" ").toLowerCase();
+  const hayWords=[...new Set(source.split(/[^a-z0-9]+/).map(normalizeToken).filter(Boolean))];
+  const nameWords=[...new Set((item.name+" "+item.subcategory).toLowerCase().split(/[^a-z0-9]+/).map(normalizeToken).filter(Boolean))];
+  const matched=terms.filter(term=>term.length>2&&hayWords.some(word=>word===term||word.startsWith(term)||term.startsWith(word)));
+  const exact=q.tokens.filter(term=>nameWords.some(word=>word===term||word.startsWith(term)||term.startsWith(word)));
   const phraseHits=q.phrases.filter(p=>{const keys=p.split(" / ");return keys.some(k=>hay.includes(normalizeToken(k)));});
   const score=matched.length*1.2+exact.length*2+(item.subcategory.toLowerCase().includes(q.raw.trim())?8:0)+phraseHits.length*2;
   const reasons=[];if(exact.length)reasons.push("Matches your wording: "+exact.slice(0,4).join(", "));if(phraseHits.length)reasons.push(...phraseHits);if(matched.length)reasons.push("Related ideas: "+matched.slice(0,5).join(", "));
@@ -317,7 +319,14 @@ function semanticSearch(query,filters={}){
  }).filter(x=>x.matchScore>0).sort((a,b)=>b.matchScore-a.matchScore||a.name.localeCompare(b.name));
  const buckets=new Map();scored.forEach(item=>{const key=item.category+"::"+item.subcategory;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(item);});
  const diversified=[];let round=0,remaining=true;while(remaining){remaining=false;for(const bucket of buckets.values()){if(bucket[round]){diversified.push(bucket[round]);remaining=true;}}round++;}
- return filters.limit?diversified.slice(0,filters.limit):diversified;
+ if(diversified.length)return filters.limit?diversified.slice(0,filters.limit):diversified;
+ // Never leave the user at a dead end: show one representative starting point per available family.
+ // These are explicitly labelled as broad suggestions, not search matches.
+ const seen=new Set(),fallback=[];
+ baseEntries.filter(x=>(!filters.category||x.category===filters.category)&&(!filters.subcategory||x.subcategory===filters.subcategory)).forEach(item=>{
+  if(!seen.has(item.subcategory)){seen.add(item.subcategory);fallback.push({...item,matchScore:0,matchReasons:["No close wording match was found. This is a general starting point you can adapt."],fallback:true});}
+ });
+ return filters.limit?fallback.slice(0,filters.limit):fallback;
 }
 function list(filters={}){if(filters.query)return semanticSearch(filters.query,filters);let out=baseEntries;if(filters.category)out=out.filter(x=>x.category===filters.category);if(filters.subcategory)out=out.filter(x=>x.subcategory===filters.subcategory);return filters.limit?out.slice(0,filters.limit):out;}
 root.STRATOSTemplates=Object.freeze({list,semanticSearch,build:(index,geo={},chosen={})=>detailedBuild(index,geo,chosen),count:variants.length,categories:[...new Set(packs.map(p=>p[0]))],subcategories:packs.map(p=>({category:p[0],name:p[1]})),dimensions,combinationCount,catalogueCount,readyMadeCount:variants.length,formatCount:n=>Number(n).toLocaleString("en-US")});
