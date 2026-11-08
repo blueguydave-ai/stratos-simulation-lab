@@ -90,6 +90,23 @@ function readBody(req) {
   });
 }
 
+function parseStructuredAnalysis(raw, finishReason) {
+  const text = String(raw || '').trim();
+  const cleaned = text.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim();
+  const first = cleaned.indexOf('{');
+  const last = cleaned.lastIndexOf('}');
+  const candidates = [text, cleaned];
+  if (first >= 0 && last > first) candidates.push(cleaned.slice(first, last + 1));
+  let parsed = null;
+  for (const candidate of candidates) { try { parsed = JSON.parse(candidate); break; } catch (_) {} }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    const reason = finishReason === 'MAX_TOKENS' ? "Gemini's response was cut off before its JSON was complete. Try again or reduce the model context." : 'Gemini returned invalid JSON (finish reason: ' + (finishReason || 'unknown') + '). Try again.';
+    throw new Error(reason);
+  }
+  const str = v => typeof v === 'string' ? v : v == null ? '' : String(v);
+  const list = v => Array.isArray(v) ? v.map(str).filter(Boolean).slice(0, 20) : typeof v === 'string' && v.trim() ? [v.trim()] : [];
+  return { summary:str(parsed.summary), reasoning:str(parsed.reasoning), hypotheses:list(parsed.hypotheses), risks:list(parsed.risks), counterarguments:list(parsed.counterarguments), evidenceNeeded:list(parsed.evidenceNeeded), experiments:list(parsed.experiments), questions:list(parsed.questions), recommendations:list(parsed.recommendations) };
+}
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     if (!allowedOrigin(req)) return send(res, 403, { error: "Origin not allowed." });
@@ -143,7 +160,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemInstruction }] },
         contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 2200, responseMimeType: "application/json", responseSchema: schema }
+        generationConfig: { temperature: 0.3, maxOutputTokens: 4096, responseMimeType: "application/json", responseSchema: schema }
       })
     });
     const data = await upstream.json().catch(() => ({}));
@@ -160,10 +177,5 @@ export default async function handler(req, res) {
       return send(res, 502, { error: reason }, cors);
     }
     let analysis;
-    try { analysis = JSON.parse(output); }
-    catch { return send(res, 502, { error: "Gemini's response could not be parsed as structured analysis. Try again." }, cors); }
-    return send(res, 200, { ok: true, provider: "Google Gemini", model: modelName, analysis }, cors);
-  } catch (error) {
-    return send(res, 502, { error: "Could not reach Gemini: " + String(error.message || error).slice(0, 250) }, cors);
-  }
-}
+    try { analysis = parseStructuredAnalysis(output, candidate && candidate.finishReason); }
+    catch (error) { return send(res, 502, { error: error.message }, cors); }
