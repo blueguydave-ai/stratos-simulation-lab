@@ -10,7 +10,7 @@ function parseEffects(text,variables){
 }
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
- const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
+ const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=(model.relationships||[]).map(item=>({...item})), powerRelations=model.powerRelations||[], institutions=model.institutions||[], groups=model.groups||[], links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
  const rng=randomFrom(hash(seedText)), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
@@ -28,7 +28,7 @@ function simulate(model,options){
  Object.entries(model.scenarioOverrides?.[branch]||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v));});
  if(branch==="favourable")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]+.7);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]-.4);});
  if(branch==="adverse")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]-.8);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]+.6);});
- const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],pending=[];
+ const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],groupOutcomes=[],institutionOutcomes=[],pending=[];
  if(!variables.length)warnings.push("No variables: the simulation has no measurable state.");
  if(!actors.length)warnings.push("No actors modelled: strategic responses are missing.");
  if(!links.length)warnings.push("No causal links: knock-on effects are limited.");
@@ -108,6 +108,23 @@ function simulate(model,options){
      if(occurred){Object.entries(event.effects||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v));});stepNotes.push("Event occurred: "+event.name);}
      else stepNotes.push("Event not applied: "+event.name);
    }
+   const activeInstitutions=institutions.filter(rule=>{
+     const start=Math.max(1,Number(rule.when)||1);if(t<start)return false;
+     const targets=String(rule.actorIds||"").split(/[,;]+/).map(x=>x.trim().toLowerCase()).filter(Boolean);
+     if(targets.length&&!targets.includes("*")&&!targets.includes(String(chosen?.actorId||"").toLowerCase())&&!targets.some(id=>actors.some(a=>a.id===chosen?.actorId&&String(a.name||"").toLowerCase()===id)))return false;
+     const variable=variables.find(v=>v.id===rule.triggerVariable),value=variable?levels[variable.id]:null,threshold=Number(rule.triggerThreshold??5),op=rule.triggerOperator||"gte";
+     return !variable||(op==="gte"?value>=threshold:op==="lte"?value<=threshold:op==="gt"?value>threshold:value<threshold);
+   });
+   for(const rule of institutions.filter(item=>Math.max(1,Number(item.when)||1)===t)){
+     const targets=String(rule.actorIds||"").split(/[,;]+/).map(x=>x.trim().toLowerCase()).filter(Boolean);
+     const variable=variables.find(v=>v.id===rule.triggerVariable),value=variable?levels[variable.id]:null,threshold=Number(rule.triggerThreshold??5),op=rule.triggerOperator||"gte";
+     const triggered=!variable||(op==="gte"?value>=threshold:op==="lte"?value<=threshold:op==="gt"?value>threshold:value<threshold);
+     const scopeOk=!targets.length||targets.includes("*")||targets.some(id=>actors.some(a=>a.id===id||String(a.name||"").toLowerCase()===id));
+     const applied={};
+     if(triggered&&scopeOk)Object.entries(parseEffects(rule.effects,variables)).forEach(([id,amount])=>{levels[id]=clamp(levels[id]+amount);applied[id]=amount;});
+     institutionOutcomes.push({id:rule.id,name:rule.name||"Institutional rule",step:t,triggered,scopeMatched:scopeOk,applied,reason:!triggered?"Trigger condition not met":!scopeOk?"No targeted actor matched":"Rule activated"});
+     if(triggered&&scopeOk)stepNotes.push("Institutional/environmental rule: "+(rule.name||"Unnamed rule"));
+   }
    if(chosen){
      actors.forEach(actor=>{
        const effects=parseEffects(actor.responseEffects,variables);
@@ -124,11 +141,12 @@ function simulate(model,options){
        // Explicit user-entered drivers; transparent heuristics, not learned psychology.
        const powerLinks=chosen.actorId?powerRelations.filter(link=>link.holderActorId===chosen.actorId&&link.dependentActorId===actor.id&&link.active!==false):[];
        const powerModifier=powerLinks.reduce((sum,link)=>{const leverage=clamp(link.leverage??5)/10,dependency=clamp(link.dependency??5)/10,legitimacy=clamp(link.legitimacy??5)/10;const magnitude=leverage*dependency*legitimacy*.12;return sum+(link.effect==="discourage"?-magnitude:link.effect==="mobilize"?magnitude:0);},0);
-       const modifiers={goalAlignment:Math.max(-5,Math.min(5,Number(actor.goalAlignment)||0))*.025,incentivePressure:(clamp(actor.incentivePressure??5)-5)*.012,resourceCapacity:(clamp(actor.resourceCapacity??5)-5)*.018,perceivedRisk:(clamp(actor.riskTolerance??5)-clamp(actor.perceivedRisk??5))*.012,informationConfidence:(clamp(actor.informationConfidence??5)-5)*.008,powerStructure:powerModifier};
+       const institutionalModifier=activeInstitutions.filter(rule=>{const targets=String(rule.actorIds||"").split(/[,;]+/).map(x=>x.trim().toLowerCase()).filter(Boolean);return !targets.length||targets.includes("*")||targets.includes(actor.id.toLowerCase())||targets.includes(String(actor.name||"").toLowerCase());}).reduce((sum,rule)=>{const strength=clamp(rule.severity??5)/10, enforcement=clamp(rule.enforcement??5)/10, magnitude=strength*enforcement*.15;return sum+(rule.responseEffect==="facilitate"?magnitude:rule.responseEffect==="restrict"?-magnitude:0);},0);
+       const modifiers={goalAlignment:Math.max(-5,Math.min(5,Number(actor.goalAlignment)||0))*.025,incentivePressure:(clamp(actor.incentivePressure??5)-5)*.012,resourceCapacity:(clamp(actor.resourceCapacity??5)-5)*.018,perceivedRisk:(clamp(actor.riskTolerance??5)-clamp(actor.perceivedRisk??5))*.012,informationConfidence:(clamp(actor.informationConfidence??5)-5)*.008,powerStructure:powerModifier,institutionalEnvironment:institutionalModifier};
        const adjustment=Object.values(modifiers).reduce((sum,value)=>sum+value,0);
        const chance=Math.max(0,Math.min(1,baseChance+adjustment));
        const responded=rng()<chance;
-       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null,powerLinks:powerLinks.map(link=>link.id),powerModifier});
+       actorOutcomes.push({actorId:actor.id,name:actor.name,step:t,policy:actor.policy||"custom",triggered:true,responded,baseProbability:baseChance,probability:chance,modifier:adjustment,modifiers,triggerVariable:triggerId||null,triggerValue:observed??null,threshold:triggerId?threshold:null,powerLinks:powerLinks.map(link=>link.id),powerModifier,institutionalModifier,activeInstitutionIds:activeInstitutions.map(rule=>rule.id)});
        if(responded){
          Object.entries(effects).forEach(([k,v])=>{levels[k]=clamp(levels[k]+v*.45);});
          stepNotes.push("Actor policy response ("+(actor.policy||"custom")+"): "+actor.name);
@@ -172,7 +190,7 @@ function simulate(model,options){
  if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are scheduled once per link per step, using the source state at scheduling time. Effects beyond the run horizon are not shown.");
  const branchName={base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch]||branch;
  const summary="Indicative weighted alignment only. Final state: "+variables.map(v=>v.name+" "+Number(levels[v.id]).toFixed(1)+"/10").join("; ")+".";
- return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
+ return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,groups:groupOutcomes,institutions:institutionOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
 }
 root.STRATOSSimulation=Object.freeze({simulate,parseEffects});
 })(window);
