@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>STRATOS Core tests</title></head>
+<body style="font:16px system-ui;max-width:850px;margin:40px auto;padding:0 18px">
+<h1>STRATOS core contract checks</h1><p>Open after deployment. These checks run locally in the browser and require no external service.</p><pre id="results">Running…</pre>
+<script src="../src/core/model.js"></script><script src="../src/core/validation.js"></script><script src="../src/domains/registry.js"></script>
+<script>
+const out=[];function test(name,fn){try{if(fn()!==true)throw Error("Assertion returned false");out.push("PASS  "+name)}catch(e){out.push("FAIL  "+name+" — "+e.message)}}
+test("fresh model has all collections",()=>{const m=STRATOSCore.freshModel();return STRATOSCore.COLLECTIONS.every(k=>Array.isArray(m[k]))});
+test("normalization preserves existing situation",()=>{const m=STRATOSCore.normalizeModel({version:2,situation:{outcome:"Test"},actors:[{id:"a"}]});return m.situation.outcome==="Test"&&m.actors.length===1&&m.schemaVersion===3});
+test("validation catches dangling links",()=>{const m=STRATOSCore.freshModel();m.links=[{id:"l",from:"missing",to:"also-missing"}];return STRATOSCore.validateModel(m).errors.some(x=>x.code==="link.dangling")});
+test("domain registry exposes business and cultural packs",()=>{const ids=STRATOSDomains.list().map(x=>x.id);return ids.includes("business")&&ids.includes("cross-cultural")&&new Set(ids).size===ids.length});
+test("unknown domain lookup is safe",()=>STRATOSDomains.get("not-a-domain")===null);
+document.querySelector("#results").textContent=out.join("\n")+"\n\n"+out.filter(x=>x.startsWith("PASS")).length+"/"+out.length+" checks passed.";
+</script></body></html>
