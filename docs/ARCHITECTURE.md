@@ -11,7 +11,7 @@ The current app is a static GitHub Pages site. This increment adds zero third-pa
 2. Canonical model — versioned situation schema and stable record IDs.
 3. Validation — structural errors separated from evidence and completeness warnings.
 4. Domain packs — business, brokerage, negotiation, relationships, institutions and cross-cultural prompts/entities.
-5. Simulation engines (next) — deterministic scenario runner, discrete-event engine, agent interaction and network/feedback engine.
+5. Simulation engines — deterministic seeded scenario runner, event sampling, actor-response effects, causal propagation and delayed links (first browser engine increment).
 6. Evidence and context (next) — source, date, scope, sample, licence, confidence, counterevidence and review cadence.
 7. External intelligence (later) — optional AI adapter and retrieval; never silently invent simulation outcomes.
 
