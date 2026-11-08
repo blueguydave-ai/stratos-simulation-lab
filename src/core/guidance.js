@@ -1,0 +1,63 @@
+/* STRATOS Guided Simulation — local, transparent modelling advice. */
+(function(root){
+"use strict";
+const text=v=>String(v??"").trim();
+const has=v=>text(v).length>0;
+const count=(m,k)=>Array.isArray(m[k])?m[k].length:0;
+const contains=(value,terms)=>terms.some(term=>text(value).toLowerCase().includes(term));
+function analyze(model){
+ const m=model||{},s=m.situation||{},details=s.guidedDetails||{},domain=text(details.domain||m.meta?.domainPack||"general").toLowerCase();
+ const suggestions=[];
+ const add=(id,title,why,detailsText,view,priority="recommended",action="Open workspace")=>{
+  suggestions.push({id,title,why,details:detailsText,view,priority,action});
+ };
+ if(!has(s.description))add("situation","Describe the actual situation","The model needs a concrete starting state, not just a desired result.","Record what happened, what is happening now, what is at stake, and what is still unknown.","guided","essential","Describe situation");
+ if(!has(s.outcome))add("outcome","Define a measurable outcome","Without a target, the alignment score has no meaningful direction.","State what should change, for whom, by how much, and by when. Separate the desired result from the action you plan to take.","situation","essential","Set outcome");
+ if(!has(s.boundary))add("scope","Set the model boundary","A clear boundary prevents the simulation from silently treating an incomplete sketch as the whole world.","Specify geography, timeframe, people and processes included; list important exclusions and conditions that would invalidate the model.","situation","essential","Set boundary");
+ if(!has(s.timeHorizon))add("horizon","Choose a time horizon","Events, delays and strategy effects need a shared timeline.","Define what one simulation step represents (hours, days, weeks, months) and the total period to examine.","situation","recommended","Set horizon");
+ if(!count(m.actors))add("actors","Add the people and organizations that can change the outcome","Without actors, the model cannot represent strategic responses, gatekeepers or competing interests.","For each actor, add their role, goal, incentives, resources, constraints, information access, likely actions and confidence in your interpretation.","actors","essential","Add actors");
+ else if((m.actors||[]).some(a=>!has(a.goals)||!has(a.constraints)||!has(a.information)))add("actor-detail","Complete actor profiles","A name alone does not explain how someone may respond.","Add each actor's goals, incentives, resources, constraints, what they know, what they do not know, alternatives and observable behaviour. Mark private beliefs unknown unless you genuinely know them.","actors","essential","Complete actors");
+ if(!count(m.variables))add("variables","Map the important variables","The engine needs observable conditions that can change over time.","Start with need/demand, awareness, access, trust, value-fit, cost, time, resources, capability, incentives, power, competition, risk, information quality, rules and feedback speed. Remove irrelevant items and add context-specific ones.","model","essential","Add variables");
+ else if(count(m.variables)<5)add("variable-depth","Add missing context-specific variables","A very small variable set can hide important bottlenecks and trade-offs.","Ask what controls the outcome, what can change, what is measurable, and what could reverse the effect. Give each variable a range, direction, importance, confidence and evidence status.","model","recommended","Expand variables");
+ if(count(m.variables)&&!count(m.links))add("causal-links","Explain the causal mechanisms","Variables without links are mostly a static checklist; the model has little representation of knock-on effects.","For each important relationship, explain why changing A could change B, whether the effect is positive or negative, how strong it may be, and whether it is delayed. Treat every link as a hypothesis.","model","essential","Map influences");
+ if(!count(m.decisions))add("strategy","Add the strategy or alternatives you want to test","A simulation without a selected strategy explores a baseline path, not the consequences of a decision.","Create the action you are considering and at least one realistic alternative. Include doing nothing, waiting or gathering information when relevant. Specify direct effects, mechanism, cost, time, reversibility and downside.","decisions","essential","Add strategy");
+ if(!count(m.events))add("events","Add milestones, shocks and possible responses","A future path depends on things that may happen independently of your chosen action.","Add approvals, conversations, delays, competitor moves, price changes, deadlines, resource loss or external shocks. Record timing, likelihood, status, affected actors and variable effects.","events","recommended","Add events");
+ if(!count(m.evidence))add("evidence","Attach observations and sources","A detailed model built entirely from assumptions can look precise while remaining weakly grounded.","Record direct observations, documents, interviews, dates, source quality, confidence, counterevidence and alternative explanations. Distinguish facts from estimates and unknowns.","evidence","essential","Add evidence");
+ if(!count(m.experiments))add("feedback","Design a cheap real-world feedback test","The model becomes useful when its most important assumptions can be checked quickly.","Choose the riskiest assumption, define the smallest safe test, the observable signal, a threshold for changing course, cost and time to feedback.","experiments","recommended","Design test");
+ if(contains(domain,["business","market","sales","entrepreneur"])) {
+  if(!count(m.markets))add("market","Describe the market and its constraints","A business strategy depends on demand, pricing, supply, substitutes and capacity.","Define the actual market boundary, buyer/seller roles, purchasing power, price sensitivity, competition, substitutes, saturation, capacity and data source.","markets","essential","Model market");
+  if(!count(m.segments))add("segments","Separate materially different customer segments","An average customer can hide different budgets, needs, access barriers and buying authority.","For each segment, estimate size/share, purchasing power, needs fit, awareness, price sensitivity, switching costs and evidence confidence.","markets","recommended","Add segments");
+  if(!count(m.journeys))add("journey","Map the buyer's path to action","Interest does not automatically become contact, approval, payment or delivery.","Model each step from discovery to payment and delivery. Record friction, access type, trust, cost, time, availability, gatekeepers, drop-off reasons and workarounds.","markets","recommended","Map buyer journey");
+  if(!count(m.competitors))add("competitors","Record alternatives and competitor offers","A buyer compares your offer with alternatives, including doing nothing.","Include direct competitors, substitutes and informal alternatives; record price, fit, differentiation, reputation, capacity and the evidence behind each estimate.","markets","recommended","Add competitors");
+ }
+ if(contains(domain,["negotiat","broker","deal","sales"])) {
+  if(!count(m.negotiations)||!count(m.negotiationParties))add("negotiation","Model the full decision and negotiation group","The person expressing interest may not be the person with authority, budget or final approval.","Add buyer, seller, approver, gatekeeper and advisers as relevant. Separate reservation values, authority, willingness, ability, bargaining power, walk-away conditions and required approvals.","markets","essential","Model negotiation");
+ }
+ if(contains(domain,["relationship","social","people","personal"])) {
+  if(!count(m.relationships))add("relationships","Map relationships in both directions","Trust, respect and dependence may not be mutual or stable.","Record who trusts whom, respect, familiarity, dependencies, history, boundaries and observed interactions. Keep interpretations separate from direct statements and actions.","actors","recommended","Map relationships");
+  if(!count(m.communications))add("communications","Model what information reaches each person","People may act on different information, misunderstand messages or receive them late.","Record sender, recipient, message content, claim, credibility, accuracy, timing, information access and possible relay paths.","events","recommended","Model communication");
+ }
+ if(contains(domain,["institution","education","campus","organization","government"])) {
+  if(!count(m.institutions))add("institutions","Add formal rules and informal constraints","Procedures, authority, enforcement, infrastructure and local practice can change what actions are possible.","Record the exact rule or process, scope, affected actors, exceptions, enforcement, start time and source/date. Distinguish written policy from observed practice.","institutions","essential","Add constraints");
+ }
+ if(contains(domain,["technology","ai","automation"])) {
+  if(!count(m.aiSystems))add("ai-systems","Represent relevant AI or automated systems","Automated recommendations, screening and agents can shape access, information and decisions.","Record operator, purpose, affected actors, adoption, reliability, oversight, data access, bias, failure modes, dependencies and explicit effects.","actors","recommended","Add AI system");
+  if(!count(m.aiEvents))add("ai-events","Test AI interactions and failure scenarios","System-level effects may arise from competition, outages, automation races or human-AI coordination.","Add normal operation, misuse, outage, security incident, escalation and fallback cases. Define separate success and failure effects and human oversight.","actors","recommended","Add AI interaction");
+ }
+ const domainQuestions={
+  business:["Who pays, who uses the offer, and who approves the purchase?","What alternatives can customers choose, including doing nothing?","What are the unit economics, cash timing, delivery capacity and repeat-purchase assumptions?"],
+  market:["Which segment is actually reachable, and what evidence supports its size?","What makes a buyer switch, delay or abandon the journey?","How quickly can price, awareness, trust and demand be observed?"],
+  negotiation:["Who has authority to commit, and who can veto?","What are each party's alternatives and walk-away conditions?","Which terms are negotiable, conditional or non-negotiable?"],
+  relationships:["What was directly said or done, and what is interpretation?","What alternative explanations fit the same evidence?","What boundaries, obligations and power differences matter?"],
+  institution:["Which written rule applies, and who enforces it in practice?","What exceptions, appeals and informal processes exist?","Which claims need local confirmation from an authoritative source?"],
+  technology:["Who owns, operates and can override the system?","What happens during errors, outages, adversarial use or low-quality inputs?","Who benefits, who bears risk and what human fallback exists?"]
+ };
+ const questions=domainQuestions[domain]||["What important actor, constraint or alternative is missing?","Which assumption would most change the decision if it were wrong?","What is the earliest observable signal that the strategy is working or failing?"];
+ const checks=[
+  ["Outcome defined",has(s.outcome)],["Scope defined",has(s.boundary)],["At least one actor",count(m.actors)>0],["At least five variables",count(m.variables)>=5],["Causal mechanisms",count(m.links)>0],["Strategy option",count(m.decisions)>0],["Events and timing",count(m.events)>0],["Evidence attached",count(m.evidence)>0],["Feedback test",count(m.experiments)>0]
+ ];
+ const ready=Math.round(checks.filter(x=>x[1]).length/checks.length*100);
+ return {domain,question:text(s.simulationQuestion||details.simulationQuestion),readiness:ready,checks,suggestions,questions,summary:suggestions.length?"Address the highest-priority gaps before treating the run as decision support.":"The basic model structure is present. Check the assumptions, compare branches and validate the most important outputs against reality."};
+}
+root.STRATOSGuidance=Object.freeze({analyze});
+})(window);
