@@ -250,6 +250,7 @@ const searchAliases={
 "Student organization / club governance":"student union campus society association club events",
 "Academic performance / exam preparation":"student studying learning revision tests grades examination",
 "School administration / parent engagement":"school teacher parent guardian pupils attendance",
+"Cybersecurity risk management":"infosec security vulnerability threat incident prevention hacking breach attack malware",
 "Healthcare clinic operations":"hospital clinic doctor nurse appointment patient care",
 "Patient access / care navigation":"patient referral clinic health service eligibility appointment",
 "Startup fundraising / investor relations":"venture capital angel investor pitch deck funding",
