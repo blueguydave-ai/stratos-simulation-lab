@@ -10,7 +10,7 @@ function parseEffects(text,variables){
 }
 function simulate(model,options){
  const opts=options||{}, branch=opts.branch||"base", steps=Math.max(1,Math.min(60,Number(opts.steps)||4)), rounds=Math.max(1,Math.min(10,Number(opts.rounds)||3));
- const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], links=model.links||[], decisions=model.decisions||[];
+ const variables=model.variables||[], actors=model.actors||[], events=model.events||[], communications=model.communications||[], relationships=model.relationships||[], links=model.links||[], decisions=model.decisions||[];
  const chosen=decisions.find(x=>x.id===opts.decisionId), seedText=String(opts.seed??[branch,opts.decisionId||"none",steps,rounds].join("|"));
  const rng=randomFrom(hash(seedText)), levels={};
  variables.forEach(v=>levels[v.id]=clamp(v.level??5));
@@ -28,7 +28,7 @@ function simulate(model,options){
  Object.entries(model.scenarioOverrides?.[branch]||{}).forEach(([k,v])=>{if(levels[k]!==undefined)levels[k]=clamp(levels[k]+Number(v));});
  if(branch==="favourable")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]+.7);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]-.4);});
  if(branch==="adverse")variables.forEach(v=>{if(v.direction==="positive")levels[v.id]=clamp(levels[v.id]-.8);if(v.direction==="negative")levels[v.id]=clamp(levels[v.id]+.6);});
- const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],pending=[];
+ const warnings=[],timeline=[],eventOutcomes=[],actorOutcomes=[],communicationOutcomes=[],relationshipOutcomes=[],pending=[];
  if(!variables.length)warnings.push("No variables: the simulation has no measurable state.");
  if(!actors.length)warnings.push("No actors modelled: strategic responses are missing.");
  if(!links.length)warnings.push("No causal links: knock-on effects are limited.");
@@ -67,14 +67,24 @@ function simulate(model,options){
      const access=String(recipient.informationAccess||"").split(/[,;]+/).map(value=>value.trim().toLowerCase()).filter(Boolean);
      if(access.length&&!access.includes(variable.id.toLowerCase())&&!access.includes(String(variable.name||"").toLowerCase())){communicationOutcomes.push({id:message.id,name:message.name||"Message",step:t,sender:sender?.name||"Unknown sender",recipient:recipient.name,delivered:false,reason:"Recipient lacks access to target information"});stepNotes.push("Message blocked by information access: "+(message.name||variable.name));continue;}
      const beliefs=actorBeliefs[recipient.id]||(actorBeliefs[recipient.id]={});
+     const relationship=relationships.find(item=>item.fromActorId===message.senderId&&item.toActorId===message.recipientId);
+     const trust=relationship?clamp(relationship.trust??5)/10:0.5;
+     const respect=relationship?clamp(relationship.respect??5)/10:0.5;
      const before=beliefs[variable.id]??5,claim=clamp(message.claimedValue);
      const credibility=Math.max(0,Math.min(10,Number(message.credibility??5)))/10;
      const confidenceFactor=Math.max(0,Math.min(10,Number(recipient.informationConfidence??5)))/10;
      const learning=Math.max(0,Math.min(1,Number(recipient.learningRate??0.25)));
      const accuracyFactor=({accurate:1,partial:0.5,misleading:0.8})[message.accuracy]??1;
-     const influence=learning*credibility*confidenceFactor*accuracyFactor;
+     const relationshipFactor=0.5+trust*0.4+respect*0.1;
+     const influence=learning*credibility*confidenceFactor*accuracyFactor*relationshipFactor;
      const after=clamp(before+(claim-before)*influence);beliefs[variable.id]=after;
-     communicationOutcomes.push({id:message.id,name:message.name||"Message",step:t,sender:sender?.name||"Unknown sender",recipient:recipient.name,variable:variable.name,claim,before,after,influence,accuracy:message.accuracy||"unspecified",delivered:true});
+     communicationOutcomes.push({id:message.id,name:message.name||"Message",step:t,sender:sender?.name||"Unknown sender",recipient:recipient.name,variable:variable.name,claim,before,after,influence,accuracy:message.accuracy||"unspecified",trust,respect,relationshipFactor,delivered:true});
+     if(relationship){
+       const trustBefore=clamp(relationship.trust??5);
+       const trustDelta=message.accuracy==="accurate"?0.35:message.accuracy==="misleading"?-0.8:message.accuracy==="partial"?-0.1:0;
+       relationship.trust=clamp(trustBefore+trustDelta);
+       relationshipOutcomes.push({step:t,fromActorId:relationship.fromActorId,toActorId:relationship.toActorId,from:sender?.name||"Unknown sender",to:recipient.name,trustBefore,trustAfter:relationship.trust,trustDelta,respect:clamp(relationship.respect??5)});
+     }
      stepNotes.push((message.name||"Message")+" delivered to "+recipient.name+"; belief changed "+before.toFixed(1)+" to "+after.toFixed(1));
    }
    for(const event of eventsSorted.filter(e=>Math.max(1,Number(e.when)||1)===t)){
@@ -148,7 +158,7 @@ function simulate(model,options){
  if(links.some(l=>Number(l.delay)>0))warnings.push("Delayed causal effects are scheduled once per link per step, using the source state at scheduling time. Effects beyond the run horizon are not shown.");
  const branchName={base:"Baseline",favourable:"Favourable",adverse:"Adverse",custom:"Custom stress"}[branch]||branch;
  const summary="Indicative weighted alignment only. Final state: "+variables.map(v=>v.name+" "+Number(levels[v.id]).toFixed(1)+"/10").join("; ")+".";
- return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
+ return {id:"run_"+hash(seedText+"|"+JSON.stringify(timeline)).toString(36),seed:seedText,branch,title:branchName+" · "+(chosen?.name||"No selected strategy"),decision:opts.decisionId||"",score,low,high,summary,steps:timeline.map(x=>({step:x.step,label:x.label,note:"State snapshot: "+variables.map(v=>v.name+" "+x.levels[v.id]).join("; ")})),sensitivities,warnings,notes,createdAt:new Date().toISOString(),finalLevels:levels,events:eventOutcomes,actorResponses:actorOutcomes,communications:communicationOutcomes,relationships:relationshipOutcomes,beliefTimeline,timeline,metrics:{eventsOccurred:eventOutcomes.filter(x=>x.occurred).length,eventsConsidered:eventOutcomes.length,actorResponses:actorOutcomes.filter(x=>x.responded).length,actorResponsesConsidered:actorOutcomes.length,actorTriggers:actorOutcomes.filter(x=>x.triggered).length}};
 }
 root.STRATOSSimulation=Object.freeze({simulate,parseEffects});
 })(window);
