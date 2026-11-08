@@ -102,6 +102,44 @@ function detailedBuild(index,geo={},chosen={}){
  model.meta.title+=" — "+selected.scale+" · "+selected.objective;
  return model;
 }
-function list(filters={}){let out=variants.map((v,i)=>({id:String(i),category:packs[v.packIndex][0],subcategory:packs[v.packIndex][1],name:contextName(v),description:packs[v.packIndex][2]+". "+v.stage[1]+" "+v.stakeholders[1]+" "+v.environment[1]+" "+v.pressure[1],stage:v.stage[0],stakeholders:v.stakeholders[0],environment:v.environment[0],pressure:v.pressure[0]}));if(filters.category)out=out.filter(x=>x.category===filters.category);if(filters.subcategory)out=out.filter(x=>x.subcategory===filters.subcategory);if(filters.query){const terms=String(filters.query).toLowerCase().trim().split(/\s+/).filter(Boolean);out=out.filter(x=>{const hay=(x.name+" "+x.description+" "+x.category+" "+x.subcategory).toLowerCase();return terms.every(term=>hay.includes(term));});}return filters.limit?out.slice(0,filters.limit):out;}
+const searchAliases={
+"Startup validation":"new venture founder idea validation feasibility MVP prototype problem discovery product market fit",
+"Small business operations":"retail shop restaurant salon agency contractor local service inventory supplier procurement cash flow",
+"Business model redesign":"revenue model pricing monetization pivot restructuring turnaround",
+"Franchise / multi-location":"branch expansion chain outlets territory franchisee site selection",
+"Novel product launch":"new product innovation invention prototype adoption category creation",
+"Mature product competition":"commodity established brand market share differentiation substitution",
+"Platform / marketplace":"two sided marketplace app ecosystem gig economy network liquidity",
+"B2B enterprise sales":"procurement purchasing sourcing vendor supplier tender RFP RFQ contract corporate buyer",
+"B2C customer acquisition":"consumer ecommerce online store retail direct response advertising funnel",
+"Subscription / retention":"membership recurring billing renewal cancellation churn SaaS",
+"Real estate brokerage":"property housing landlord tenant rental lease sale viewing title",
+"Talent / recruitment brokerage":"staffing hiring placement headhunter job candidate employer vacancy",
+"Creative / music placement":"sync licensing music supervisor soundtrack film television advert commercial publisher label A&R",
+"Commercial deal intermediary":"introducer finder fee referral commission sourcing partnership",
+"Price / commercial negotiation":"bargaining quotation discount terms contract payment scope",
+"Multi-party negotiation":"procurement committee board approval coalition veto stakeholders",
+"Conflict resolution":"dispute mediation grievance disagreement reconciliation",
+"Team performance":"project delivery sprint coordination collaboration workload",
+"Hiring / organizational change":"reorganization restructuring layoffs promotion recruitment culture change",
+"Institution / bureaucracy":"permit application visa admission accreditation documentation government office",
+"University / campus dynamics":"student lecturer professor hostel dormitory student union campus club admission",
+"Research / academic collaboration":"thesis laboratory grant paper publication coauthor ethics review",
+"Dating / relationship formation":"romance courtship attraction compatibility partner communication boundaries",
+"Friendship / social network":"peer group community belonging social circle networking",
+"Family / household system":"parents siblings marriage domestic household inheritance caregiving",
+"Online community / creator":"influencer audience followers moderation creator economy social media",
+"Coalition / political influence":"advocacy campaign election lobbying faction public support",
+"Reputation / status dynamics":"credibility prestige image social standing trust perception",
+"AI adoption / automation":"copilot agent workflow automation model deployment workforce",
+"Cyber / platform outage response":"incident response breach ransomware downtime service failure recovery",
+"Public policy / service delivery":"government programme public service policy implementation citizen access",
+"Community resource allocation":"shared facilities budget grants aid land water distribution",
+"Career transition":"job search promotion reskilling occupation profession unemployment",
+"Personal goal execution":"habit productivity discipline attention personal project execution",
+"Cross-border market entry":"international expansion export import foreign market localization",
+"Cross-cultural collaboration":"multilingual remote distributed teams intercultural communication"
+};
+function list(filters={}){let out=variants.map((v,i)=>({id:String(i),category:packs[v.packIndex][0],subcategory:packs[v.packIndex][1],name:contextName(v),description:packs[v.packIndex][2]+". "+v.stage[1]+" "+v.stakeholders[1]+" "+v.environment[1]+" "+v.pressure[1],stage:v.stage[0],stakeholders:v.stakeholders[0],environment:v.environment[0],pressure:v.pressure[0]}));if(filters.category)out=out.filter(x=>x.category===filters.category);if(filters.subcategory)out=out.filter(x=>x.subcategory===filters.subcategory);if(filters.query){const terms=String(filters.query).toLowerCase().trim().split(/\s+/).filter(Boolean);out=out.filter(x=>{const hay=(x.name+" "+x.description+" "+x.category+" "+x.subcategory+" "+(searchAliases[x.subcategory]||"")).toLowerCase();return terms.every(term=>hay.includes(term));});}return filters.limit?out.slice(0,filters.limit):out;}
 root.STRATOSTemplates=Object.freeze({list,build:(index,geo={},chosen={})=>detailedBuild(index,geo,chosen),count:variants.length,categories:[...new Set(packs.map(p=>p[0]))],subcategories:packs.map(p=>({category:p[0],name:p[1]})),dimensions,combinationCount,catalogueCount,readyMadeCount:variants.length,formatCount:n=>Number(n).toLocaleString("en-US")});
 })(window);
