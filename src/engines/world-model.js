@@ -22,6 +22,21 @@ function build(source,options){
  p.people.forEach((x,i)=>{if(model.actors.length>=6||names.has(x[0].toLowerCase()))return;const a={id:id("actor",x[0]+"|"+narrative),name:x[0],type:/gatekeeper/.test(x[2])?"institution":/competitor/.test(x[2])?"company":"person",role:x[2],goal:x[1],objective:x[1],incentives:x[1],resources:"Not specified; capacity and access remain uncertain.",constraints:"Specific limits are unknown and must not be treated as facts.",information:"Has only the information reasonably available to this role.",policy:"custom",goalAlignment:x[2]==="initiator"?1:0,incentivePressure:5,resourceCapacity:5,perceivedRisk:5,riskTolerance:5,urgency:5,skepticism:5,statusQuoBias:5,cognitiveLoad:5,lossAversion:5,informationConfidence:3,learningRate:.32,responseChance:58,confidence:"low",generatedBy:"STRATOS World Builder"};model.actors.push(a);added.actors.push(a);names.add(x[0].toLowerCase());});
  const variableNames=new Set(model.variables.map(v=>clean(v.name).toLowerCase()));
  p.vars.forEach((name,i)=>{if(variableNames.has(name.toLowerCase()))return;const v={id:id("var",name+"|"+narrative),name,description:"Automatically inferred factor. No direct measurement was supplied.",level:5,low:2,high:8,importance:i<4?8:6,direction:/pressure|competition|friction|risk|opposition|uncertainty/i.test(name)?"negative":"positive",confidence:"low",evidenceStatus:"assumption",notes:"Generated hypothesis; replace with observed evidence when available.",generatedBy:"STRATOS World Builder"};model.variables.push(v);added.variables.push(v);variableNames.add(name.toLowerCase());});
+ // Generated participants receive different information access; no one automatically knows the whole model.
+ model.actors.filter(a=>a.generatedBy==="STRATOS World Builder").forEach(actor=>{
+  const role=String(actor.role||"").toLowerCase();
+  const visible=model.variables.filter(v=>{
+   const n=String(v.name||"");
+   if(role==="initiator")return !/competitor private|rival cost|internal capacity/i.test(n);
+   if(role==="buyer"||role==="counterparty")return /interest|trust|fit|budget|price|awareness|friction|rights|urgency|agreement|risk/i.test(n);
+   if(role==="gatekeeper")return /access|rights|risk|capacity|authority|process|deadline|urgency|trust|eligibility/i.test(n);
+   if(role==="competitor"||role==="alternative")return /competition|awareness|demand|price|alternative|market|interest/i.test(n);
+   if(role==="group"||role==="supporter"||role==="observer")return /trust|support|coordination|interest|respect|communication|group/i.test(n);
+   return /interest|trust|access|urgency|uncertainty/i.test(n);
+  });
+  actor.informationAccess=visible.map(v=>v.id).join(",");
+  actor.beliefs=visible.map(v=>v.id+":5").join(";");
+ });
  const find=re=>model.variables.find(v=>re.test(v.name||"")),pairs=[
  [/interest/i,/urgency|decision/i,"Greater interest can make a decision feel more worthwhile."],
  [/trust/i,/willingness|agreement|cooperation|decision/i,"Trust can reduce hesitation and make cooperation easier."],
