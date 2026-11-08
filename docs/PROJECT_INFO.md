@@ -173,3 +173,14 @@ Repaired malformed JavaScript in the main UI that prevented `app.js` from parsin
 - Scenario Engine result details include STRATOS Reasoning: largest modelled movements, sensitivity drivers, applied actor rules, warnings and follow-up questions.
 - This is transparent heuristic text interpretation, not a connected large language model. No user data is sent to a cloud model. A real generative AI integration requires a secure server-side proxy/provider configuration; embedding a private API key in this static browser app would expose it.
 - Numeric simulation remains intact. Commentary is supplemental, not empirically validated forecasting.
+
+
+## Optional generative AI backend (2026-11-08)
+- Added a Netlify Functions endpoint at `netlify/functions/stratos-ai.mjs` using the OpenAI Responses API and a strict JSON Schema response.
+- Added `src/engines/ai.js` as the browser adapter. Guided Start can request AI interpretation; saved simulation reports can request a critical AI review. Existing local heuristic interpretation remains available and is not replaced.
+- AI output includes reasoning, hypotheses, risks, counterarguments, evidence requests, fast experiments, questions and suggested actions. It is rendered as commentary only; it never writes model records or changes simulation values.
+- The backend reads `OPENAI_API_KEY` and optional `STRATOS_AI_MODEL` / `STRATOS_ACCESS_CODE` from Netlify Functions environment variables. Default model is `gpt-5.5`. No API key is shipped to the browser.
+- The backend restricts browser origins to the Netlify deployment URLs, limits request size, applies a best-effort per-instance rate limit, and optionally checks a shared access code. The in-memory rate limit is not a durable abuse-prevention system; use provider spending limits/alerts and stronger authentication before making the endpoint broadly public.
+- `netlify.toml` and `scripts/prepare-netlify.mjs` configure a dependency-free static build into `dist`, keeping function source outside the published directory.
+- AI use sends the supplied situation/model/run content to OpenAI. Users should remove personal or sensitive details they do not want sent to the provider.
+- Deployment is not yet confirmed. The GitHub project must be connected to Netlify, the environment variables configured in Netlify, and a successful production deploy completed before AI requests can work.
