@@ -231,15 +231,14 @@ textarea{font-family:"DM Sans",sans-serif;font-size:15px;line-height:1.75;min-he
 textarea{background:rgba(5,8,13,.075);border-color:rgba(255,255,255,.27)}
 textarea:focus{background:rgba(5,8,13,.13)}
 /* Chromium can refract the actual live backdrop. Safari keeps the transparent optical-glass fallback. */
-@supports (backdrop-filter:url("#stratos-edge-refraction")){
-  .glass-panel{
-    -webkit-backdrop-filter:url("#stratos-edge-refraction") blur(8px) saturate(160%) brightness(1.12);
-    backdrop-filter:url("#stratos-edge-refraction") blur(8px) saturate(160%) brightness(1.12);
-  }
-  .metric,.factor,.outcome,.mode-option{
-    -webkit-backdrop-filter:url("#stratos-edge-refraction") blur(7px) saturate(150%) brightness(1.1);
-    backdrop-filter:url("#stratos-edge-refraction") blur(7px) saturate(150%) brightness(1.1);
-  }
+.supports-live-refraction .glass-panel{
+  -webkit-backdrop-filter:url("#stratos-edge-refraction") blur(8px) saturate(160%) brightness(1.12);
+  backdrop-filter:url("#stratos-edge-refraction") blur(8px) saturate(160%) brightness(1.12);
+}
+.supports-live-refraction .metric,.supports-live-refraction .factor,
+.supports-live-refraction .outcome,.supports-live-refraction .mode-option{
+  -webkit-backdrop-filter:url("#stratos-edge-refraction") blur(7px) saturate(150%) brightness(1.1);
+  backdrop-filter:url("#stratos-edge-refraction") blur(7px) saturate(150%) brightness(1.1);
 }
 @media(max-width:680px){
   .intro{padding:58px 0 30px}
