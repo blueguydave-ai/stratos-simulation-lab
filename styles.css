@@ -227,13 +227,13 @@ textarea:focus{border-color:rgba(200,168,121,.65);background:rgba(4,7,10,.7);box
 .site-header .brand-logo{
   display:block!important;
   position:static!important;
-  flex:0 0 42px!important;
-  width:42px!important;
-  min-width:42px!important;
-  max-width:42px!important;
-  height:42px!important;
-  min-height:42px!important;
-  max-height:42px!important;
+  flex:0 0 34px!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  min-height:34px!important;
+  max-height:34px!important;
   aspect-ratio:1/1;
   margin:0!important;
   padding:0!important;
@@ -246,12 +246,12 @@ textarea:focus{border-color:rgba(200,168,121,.65);background:rgba(4,7,10,.7);box
 }
 @media(max-width:560px){
   .site-header .brand-logo{
-    flex-basis:38px!important;
-    width:38px!important;
-    min-width:38px!important;
-    max-width:38px!important;
-    height:38px!important;
-    min-height:38px!important;
-    max-height:38px!important;
+    flex-basis:30px!important;
+    width:30px!important;
+    min-width:30px!important;
+    max-width:30px!important;
+    height:30px!important;
+    min-height:30px!important;
+    max-height:30px!important;
   }
 }
