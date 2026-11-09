@@ -27,8 +27,382 @@ async function expandOutcomes(){if(!currentAnalysis||expanding)return;expanding=
 runButton.addEventListener("click",async()=>{const scenario=scenarioInput.value.trim();if(scenario.length<20){showStatus("Describe the situation in a little more detail so STRATOS has enough context to analyse it.",true);scenarioInput.focus();return;}runButton.disabled=true;runButton.querySelector("span:first-child").textContent="Exploring...";resultsBox.hidden=true;resultsBox.replaceChildren();currentAnalysis=null;showStatus(currentScope==="expanded"?"Widening the lens carefully to find relevant surrounding influences...":"Mapping the immediate situation and its plausible outcomes...");try{const response=await fetch("/api/outcomes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenario,scope:currentScope,action:"initial"})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"STRATOS could not complete the analysis. Please try again.");if(!payload.analysis||!Array.isArray(payload.analysis.outcomes)||payload.analysis.outcomes.length<5)throw new Error("The analysis came back incomplete. Please run it again.");currentAnalysis=payload.analysis;render(currentAnalysis);statusBox.hidden=true;resultsBox.hidden=false;resultsBox.scrollIntoView({behavior:"smooth",block:"start"});}catch(error){showStatus(error.message||"Something went wrong. Please try again.",true);}finally{runButton.disabled=false;runButton.querySelector("span:first-child").textContent="Explore outcomes";}});
 
 
+
+/* RESEARCH EXPERT — web-grounded investigation module. */
+const outcomesTab = document.getElementById("outcomes-tab");
+const researchTab = document.getElementById("research-tab");
+const outcomesModule = document.getElementById("outcomes-module");
+const researchModule = document.getElementById("research-module");
+const researchQuestion = document.getElementById("research-question");
+const researchContext = document.getElementById("research-context");
+const researchButton = document.getElementById("research-run-button");
+const researchStatus = document.getElementById("research-status");
+const researchResults = document.getElementById("research-results");
+
+function switchModule(which) {
+  const showResearch = which === "research";
+  outcomesModule.hidden = showResearch;
+  researchModule.hidden = !showResearch;
+  outcomesTab.classList.toggle("is-active", !showResearch);
+  researchTab.classList.toggle("is-active", showResearch);
+  outcomesTab.setAttribute("aria-pressed", String(!showResearch));
+  researchTab.setAttribute("aria-pressed", String(showResearch));
+  window.scrollTo({ top: document.querySelector(".module-switcher").offsetTop - 18, behavior: "smooth" });
+}
+outcomesTab.addEventListener("click", () => switchModule("outcomes"));
+researchTab.addEventListener("click", () => switchModule("research"));
+
+function researchNode(tag, className, value) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (value !== undefined && value !== null) node.textContent = String(value);
+  return node;
+}
+function researchSection(parent, title, eyebrow) {
+  const section = researchNode("section", "research-section");
+  if (eyebrow) section.append(researchNode("p", "research-section-eyebrow", eyebrow));
+  section.append(researchNode("h3", "research-section-title", title));
+  parent.append(section);
+  return section;
+}
+function researchCard(parent, title, body, meta) {
+  const card = researchNode("article", "research-card");
+  card.append(researchNode("h4", "", title || "Research note"));
+  if (meta) card.append(researchNode("p", "research-card-meta", meta));
+  if (body) card.append(researchNode("p", "research-card-body", body));
+  parent.append(card);
+  return card;
+}
+function researchSourceLinks(parent, urls, sourceMap) {
+  if (!Array.isArray(urls) || !urls.length) return;
+  const wrap = researchNode("div", "research-citations");
+  urls.forEach(url => {
+    const source = sourceMap.get(url);
+    if (!source) return;
+    const link = document.createElement("a");
+    link.href = source.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = source.title || new URL(source.url).hostname;
+    link.title = source.url;
+    wrap.append(link);
+  });
+  if (wrap.childElementCount) parent.append(wrap);
+}
+function researchList(items, formatter) {
+  const list = document.createElement("ul");
+  list.className = "research-bullet-list";
+  (items || []).forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = formatter ? formatter(item) : String(item);
+    list.append(li);
+  });
+  return list;
+}
+function renderResearchReport(payload) {
+  const report = payload.report || {};
+  const sources = Array.isArray(payload.sources) ? payload.sources : [];
+  const sourceMap = new Map(sources.map(source => [source.url, source]));
+  researchResults.replaceChildren();
+
+  const head = researchNode("header", "research-results-head");
+  head.append(researchNode("p", "research-results-kicker", "STRATOS / RESEARCH DOSSIER"));
+  head.append(researchNode("h2", "", report.title || "Research findings"));
+  head.append(researchNode("p", "research-executive-summary", report.executive_summary || "The investigation is complete. Review the evidence and limitations below."));
+  const confidence = researchNode("span", "research-confidence", "Confidence: " + (report.confidence || "Unrated"));
+  head.append(confidence);
+  if (report.confidence_reason) head.append(researchNode("p", "research-confidence-reason", report.confidence_reason));
+  researchResults.append(head);
+
+  const metrics = researchNode("div", "research-metrics");
+  [
+    [String(sources.length), "web sources surfaced"],
+    [String((report.key_findings || []).length), "key findings"],
+    [String((report.risks || []).length), "risks examined"],
+    [String((report.blind_spot_audit || []).length), "blind spots audited"]
+  ].forEach(([number, label]) => {
+    const item = researchNode("div", "research-metric");
+    item.append(researchNode("strong", "", number), researchNode("span", "", label));
+    metrics.append(item);
+  });
+  researchResults.append(metrics);
+
+  if (report.scope_and_method) {
+    const method = researchSection(researchResults, "How the investigation was conducted", "METHOD");
+    researchCard(method, "Scope and approach", report.scope_and_method);
+  }
+
+  const findings = report.key_findings || [];
+  if (findings.length) {
+    const section = researchSection(researchResults, "What the evidence says", "01 / KEY FINDINGS");
+    const grid = researchNode("div", "research-card-grid");
+    findings.forEach(item => {
+      const card = researchNode("article", "research-card");
+      const strength = researchNode("span", "research-strength " + String(item.evidence_strength || "limited").toLowerCase(), item.evidence_strength || "Evidence strength not rated");
+      card.append(strength, researchNode("h4", "", item.title || "Finding"), researchNode("p", "research-card-body", item.detail || ""));
+      if (item.significance) card.append(researchNode("p", "research-card-implication", item.significance));
+      researchSourceLinks(card, item.source_urls, sourceMap);
+      grid.append(card);
+    });
+    section.append(grid);
+  }
+
+  if ((report.evidence_points || []).length) {
+    const section = researchSection(researchResults, "Claims and supporting evidence", "02 / EVIDENCE CHECK");
+    const list = researchNode("div", "research-evidence-list");
+    report.evidence_points.forEach(item => {
+      const card = researchNode("article", "research-evidence-item");
+      card.append(researchNode("h4", "", item.claim || "Evidence point"));
+      card.append(researchNode("p", "", item.evidence || ""));
+      if (item.caveat) card.append(researchNode("p", "research-caveat", "Qualification: " + item.caveat));
+      researchSourceLinks(card, item.source_urls, sourceMap);
+      list.append(card);
+    });
+    section.append(list);
+  }
+
+  if ((report.charts || []).length) {
+    const section = researchSection(researchResults, "The numbers, made visible", "03 / DATA & CHARTS");
+    (report.charts || []).forEach(chart => {
+      const chartBox = researchNode("article", "research-chart");
+      const chartHead = researchNode("div", "research-chart-head");
+      chartHead.append(researchNode("h4", "", chart.title || "Evidence comparison"));
+      if (chart.unit) chartHead.append(researchNode("span", "", chart.unit));
+      chartBox.append(chartHead);
+      if (chart.takeaway) chartBox.append(researchNode("p", "research-chart-takeaway", chart.takeaway));
+      const values = chart.data || [];
+      const max = Math.max(1, ...values.map(point => Math.abs(point.value)));
+      const rows = researchNode("div", "research-chart-rows");
+      values.forEach(point => {
+        const row = researchNode("div", "research-chart-row");
+        const label = researchNode("div", "research-chart-label");
+        label.append(researchNode("span", "", point.label || "Data point"), researchNode("strong", "", Number(point.value).toLocaleString() + (chart.unit ? " " + chart.unit : "")));
+        const track = researchNode("div", "research-chart-track");
+        const fill = researchNode("div", "research-chart-fill");
+        fill.style.width = Math.max(1, Math.min(100, Math.abs(point.value) / max * 100)) + "%";
+        track.append(fill);
+        row.append(label, track);
+        researchSourceLinks(row, point.source_urls, sourceMap);
+        rows.append(row);
+      });
+      chartBox.append(rows);
+      if (chart.caveat) chartBox.append(researchNode("p", "research-caveat", chart.caveat));
+      section.append(chartBox);
+    });
+  } else {
+    const section = researchSection(researchResults, "No reliable chart data found", "03 / DATA CHECK");
+    researchCard(section, "Why there is no chart", "The investigation did not find enough reliable, comparable numeric evidence to create a meaningful chart. No values have been invented to fill the gap.");
+  }
+
+  if ((report.landscape || []).length) {
+    const section = researchSection(researchResults, "The wider landscape", "04 / SYSTEM & MARKET MAP");
+    const grid = researchNode("div", "research-card-grid");
+    report.landscape.forEach(item => {
+      const card = researchNode("article", "research-card");
+      card.append(researchNode("h4", "", item.dimension || "Landscape factor"));
+      if (item.direction) card.append(researchNode("span", "research-direction", item.direction));
+      card.append(researchNode("p", "research-card-body", item.current_state || ""));
+      if (item.implication) card.append(researchNode("p", "research-card-implication", item.implication));
+      researchSourceLinks(card, item.source_urls, sourceMap);
+      grid.append(card);
+    });
+    section.append(grid);
+  }
+
+  if ((report.stakeholders || []).length) {
+    const section = researchSection(researchResults, "Who influences the system", "05 / STAKEHOLDERS");
+    const grid = researchNode("div", "research-card-grid");
+    report.stakeholders.forEach(item => {
+      const card = researchNode("article", "research-card");
+      card.append(researchNode("h4", "", item.name || "Stakeholder"));
+      if (item.influence) card.append(researchNode("span", "research-direction", item.influence + " influence"));
+      card.append(researchNode("p", "research-card-body", item.role || ""));
+      if (item.interest) card.append(researchNode("p", "research-card-meta", "Interest: " + item.interest));
+      if (item.implication) card.append(researchNode("p", "research-card-implication", item.implication));
+      grid.append(card);
+    });
+    section.append(grid);
+  }
+
+  if ((report.opportunities || []).length) {
+    const section = researchSection(researchResults, "Where the opportunities are", "06 / OPPORTUNITIES");
+    const grid = researchNode("div", "research-card-grid");
+    report.opportunities.forEach(item => {
+      const card = researchNode("article", "research-card");
+      card.append(researchNode("h4", "", item.title || "Opportunity"));
+      if (item.why_now) card.append(researchNode("p", "research-card-body", item.why_now));
+      if (item.practical_move) card.append(researchNode("p", "research-card-implication", "Practical move: " + item.practical_move));
+      if (item.effort || item.potential) card.append(researchNode("p", "research-card-meta", "Effort: " + (item.effort || "Unrated") + " · Potential: " + (item.potential || "Unrated")));
+      researchSourceLinks(card, item.source_urls, sourceMap);
+      grid.append(card);
+    });
+    section.append(grid);
+  }
+
+  if ((report.risks || []).length) {
+    const section = researchSection(researchResults, "What could go wrong", "07 / RISK REGISTER");
+    const grid = researchNode("div", "research-card-grid");
+    report.risks.forEach(item => {
+      const card = researchNode("article", "research-card research-risk-card");
+      card.append(researchNode("h4", "", item.title || "Risk"));
+      card.append(researchNode("span", "research-risk-level", "Likelihood: " + (item.likelihood || "Unclear") + " · Impact: " + (item.impact || "Unrated")));
+      if (item.early_warning) card.append(researchNode("p", "research-card-body", "Watch for: " + item.early_warning));
+      if (item.mitigation) card.append(researchNode("p", "research-card-implication", "Response: " + item.mitigation));
+      researchSourceLinks(card, item.source_urls, sourceMap);
+      grid.append(card);
+    });
+    section.append(grid);
+  }
+
+  if ((report.blind_spot_audit || []).length) {
+    const section = researchSection(researchResults, "What a quick answer might miss", "08 / BLIND-SPOT AUDIT");
+    const list = researchNode("div", "research-blindspot-list");
+    report.blind_spot_audit.forEach(item => {
+      const card = researchNode("article", "research-blindspot");
+      card.append(researchNode("span", "research-priority", item.priority || "Review"));
+      card.append(researchNode("h4", "", item.blind_spot || "Potential blind spot"));
+      if (item.why_it_is_missed) card.append(researchNode("p", "research-card-body", "Why it gets missed: " + item.why_it_is_missed));
+      if (item.consequence) card.append(researchNode("p", "research-card-implication", "Why it matters: " + item.consequence));
+      if (item.how_to_check) card.append(researchNode("p", "research-card-meta", "How to check: " + item.how_to_check));
+      list.append(card);
+    });
+    section.append(list);
+  }
+
+  if ((report.open_questions || []).length) {
+    const section = researchSection(researchResults, "What remains unanswered", "09 / OPEN QUESTIONS");
+    const list = researchNode("div", "research-evidence-list");
+    report.open_questions.forEach(item => {
+      const card = researchNode("article", "research-evidence-item");
+      card.append(researchNode("h4", "", item.question || "Open question"));
+      if (item.why_it_matters) card.append(researchNode("p", "", item.why_it_matters));
+      if (item.best_next_source) card.append(researchNode("p", "research-card-meta", "Best next check: " + item.best_next_source));
+      list.append(card);
+    });
+    section.append(list);
+  }
+
+  if ((report.recommendations || []).length) {
+    const section = researchSection(researchResults, "What to do with the findings", "10 / RECOMMENDED ACTIONS");
+    const list = researchNode("div", "research-action-list");
+    report.recommendations.forEach(item => {
+      const card = researchNode("article", "research-action");
+      card.append(researchNode("span", "research-action-priority", item.priority || "Action"));
+      card.append(researchNode("h4", "", item.action || "Recommended action"));
+      if (item.rationale) card.append(researchNode("p", "research-card-body", item.rationale));
+      if (item.trigger_to_revisit) card.append(researchNode("p", "research-card-meta", "Revisit if: " + item.trigger_to_revisit));
+      list.append(card);
+    });
+    section.append(list);
+  }
+
+  if ((report.watchlist || []).length) {
+    const section = researchSection(researchResults, "Signals worth watching", "11 / MONITORING");
+    const grid = researchNode("div", "research-card-grid");
+    report.watchlist.forEach(item => {
+      const card = researchNode("article", "research-card");
+      card.append(researchNode("h4", "", item.signal || "Signal"));
+      if (item.why) card.append(researchNode("p", "research-card-body", item.why));
+      if (item.direction_to_watch) card.append(researchNode("p", "research-card-implication", item.direction_to_watch));
+      grid.append(card);
+    });
+    section.append(grid);
+  }
+
+  const limitations = report.limitations || [];
+  const trail = Array.from(new Set([...(payload.search_queries || []), ...(report.search_queries || [])])).slice(0, 30);
+  if (limitations.length || trail.length || report.scope_and_method) {
+    const section = researchSection(researchResults, "Coverage, search trail and limitations", "12 / TRANSPARENCY");
+    if (limitations.length) {
+      const card = researchNode("article", "research-card research-transparency");
+      card.append(researchNode("h4", "", "What could not be verified"));
+      card.append(researchList(limitations));
+      section.append(card);
+    }
+    if (trail.length) {
+      const card = researchNode("article", "research-card research-transparency");
+      card.append(researchNode("h4", "", "Search queries used"));
+      const chips = researchNode("div", "research-query-list");
+      trail.forEach(query => chips.append(researchNode("span", "research-query-chip", query)));
+      card.append(chips);
+      section.append(card);
+    }
+  }
+
+  if (sources.length) {
+    const section = researchSection(researchResults, "Sources consulted", "13 / SOURCE LIBRARY");
+    const list = researchNode("div", "research-sources-grid");
+    sources.forEach((source, index) => {
+      const card = researchNode("a", "research-source");
+      card.href = source.url;
+      card.target = "_blank";
+      card.rel = "noopener noreferrer";
+      card.append(researchNode("span", "research-source-index", String(index + 1).padStart(2, "0")));
+      card.append(researchNode("strong", "", source.title || source.url));
+      let host = source.url;
+      try { host = new URL(source.url).hostname.replace(/^www\./, ""); } catch (_) {}
+      card.append(researchNode("small", "", host));
+      list.append(card);
+    });
+    section.append(list);
+  } else {
+    const section = researchSection(researchResults, "Source verification unavailable", "13 / SOURCE LIBRARY");
+    researchCard(section, "No source links were returned", "The search-grounding response did not include source URLs. Treat the report as unverified until the investigation can be repeated with accessible sources.");
+  }
+
+  const footer = researchNode("p", "research-report-disclaimer", "Research is a time-bounded investigation, not proof that every relevant source or blind spot has been found. Verify critical claims against the original sources before acting.");
+  researchResults.append(footer);
+  researchResults.hidden = false;
+  activateScrollReveals(researchResults);
+}
+
+researchButton.addEventListener("click", async () => {
+  const question = researchQuestion.value.trim();
+  if (question.length < 12) {
+    researchStatus.hidden = false;
+    researchStatus.className = "research-status error";
+    researchStatus.textContent = "Describe what you want to investigate in a little more detail.";
+    researchQuestion.focus();
+    return;
+  }
+  researchButton.disabled = true;
+  researchButton.querySelector("span:first-child").textContent = "Researching...";
+  researchResults.hidden = true;
+  researchResults.replaceChildren();
+  researchStatus.hidden = false;
+  researchStatus.className = "research-status";
+  researchStatus.textContent = "Breaking the question into research avenues, searching the web, cross-checking evidence and auditing blind spots. This may take a little while.";
+  try {
+    const response = await fetch("/api/research", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question,
+        context: researchContext.value.trim(),
+        focus: document.getElementById("research-focus").value,
+        geography: document.getElementById("research-geography").value.trim(),
+        timeframe: document.getElementById("research-timeframe").value,
+        depth: document.getElementById("research-depth").value
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "The research investigation could not be completed.");
+    if (!payload.report || typeof payload.report !== "object") throw new Error("The research service returned an incomplete report.");
+    renderResearchReport(payload);
+    researchStatus.hidden = true;
+    researchResults.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    researchStatus.hidden = false;
+    researchStatus.className = "research-status error";
+    researchStatus.textContent = error.message || "Something went wrong. Please try again.";
+  } finally {
+    researchButton.disabled = false;
+    researchButton.querySelector("span:first-child").textContent = "Begin deep research";
+  }
+});
+
 // Each panel/card reveals independently with a vertical-only motion; no depth blur or scale.
-const revealTargets = ".input-panel, .guide-panel, #status, .results-head, .metrics, .section-title, .disclaimer, .factor, .outcome, .more-row";
+const revealTargets = ".input-panel, .guide-panel, #status, .results-head, .metrics, .section-title, .disclaimer, .factor, .outcome, .more-row, .research-results-head, .research-metric, .research-section, .research-card, .research-chart, .research-source, .research-blindspot, .research-action";
 const revealObserver = "IntersectionObserver" in window
   ? new IntersectionObserver(entries => {
       entries.forEach(entry => {
@@ -55,6 +429,8 @@ activateScrollReveals();
 if ("MutationObserver" in window) {
   const resultsMotionObserver = new MutationObserver(() => activateScrollReveals(resultsBox));
   resultsMotionObserver.observe(resultsBox, { childList: true, subtree: true });
+  const researchMotionObserver = new MutationObserver(() => activateScrollReveals(researchResults));
+  researchMotionObserver.observe(researchResults, { childList: true, subtree: true });
 }
 
 
