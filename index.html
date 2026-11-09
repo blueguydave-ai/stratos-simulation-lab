@@ -12,21 +12,9 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<svg class="glass-filter-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <filter id="stratos-glass-warp" x="-12%" y="-12%" width="124%" height="124%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="8" result="glassNoise"/>
-    <feDisplacementMap in="SourceGraphic" in2="glassNoise" scale="25" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
-  <filter id="stratos-edge-refraction" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
-    <feTurbulence type="fractalNoise" baseFrequency="0.018 0.024" numOctaves="2" seed="13" result="edgeNoise"/>
-    <feDisplacementMap in="SourceGraphic" in2="edgeNoise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
-</svg>
-
 <div class="cinematic-backdrop" aria-hidden="true">
   <img class="backdrop-photo" src="/assets/chess-background.jpg" alt="">
   <div class="backdrop-vignette"></div>
-  <div class="smoke smoke-one"></div><div class="smoke smoke-two"></div>
   <div class="backdrop-grain"></div>
 </div>
 <main class="shell">
