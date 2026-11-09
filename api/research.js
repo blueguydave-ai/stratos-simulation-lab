@@ -142,7 +142,7 @@ module.exports = async function handler(req, res) {
     const grounding = candidate?.groundingMetadata || {};
     const chunks = Array.isArray(grounding.groundingChunks) ? grounding.groundingChunks : [];
     const sources = chunks
-      .filter(chunk => chunk?.web?.uri)
+      .filter(chunk => typeof chunk?.web?.uri === "string" && /^https?:\/\//i.test(chunk.web.uri))
       .map(chunk => ({ title: chunk.web.title || chunk.web.uri, url: chunk.web.uri }))
       .filter((source, index, all) => all.findIndex(item => item.url === source.url) === index);
 
