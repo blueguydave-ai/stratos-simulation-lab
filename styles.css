@@ -298,3 +298,53 @@ textarea::placeholder { color: rgba(238,231,219,.66); }
   *,*::before,*::after { animation: none !important; transition: none !important; }
   .reveal-on-scroll,.reveal-on-scroll.is-visible { opacity: 1; transform: none; will-change: auto; }
 }
+
+
+/* CLEAR GLASS — transparent optical panes, absolutely no frosting or backdrop blur. */
+.glass-panel,
+.metric,
+.factor,
+.outcome,
+.mode-option,
+.status,
+.more-button,
+textarea {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.glass-panel {
+  background: linear-gradient(132deg,
+    rgba(255,255,255,.055) 0%,
+    rgba(255,255,255,.012) 42%,
+    rgba(255,255,255,.028) 100%) !important;
+  border: 1px solid rgba(255,255,255,.48);
+  box-shadow:
+    0 28px 80px rgba(0,0,0,.20),
+    inset 0 1.5px 0 rgba(255,255,255,.78),
+    inset 1px 0 0 rgba(255,255,255,.24),
+    inset -1px 0 0 rgba(255,255,255,.12),
+    inset 0 -1px 0 rgba(255,255,255,.22) !important;
+}
+.glass-panel::before {
+  background:
+    linear-gradient(118deg,rgba(255,255,255,.24),transparent 15%,transparent 78%,rgba(255,255,255,.055)),
+    linear-gradient(180deg,rgba(255,255,255,.10),transparent 18%) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.12),
+    inset 0 1px 0 rgba(255,255,255,.62) !important;
+}
+.metric,.factor,.outcome,.mode-option {
+  background: linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.008) 58%,rgba(255,255,255,.022)) !important;
+  border-color: rgba(255,255,255,.34);
+  box-shadow:
+    0 14px 38px rgba(0,0,0,.14),
+    inset 0 1px 0 rgba(255,255,255,.48),
+    inset 0 -1px 0 rgba(255,255,255,.14) !important;
+}
+textarea {
+  background: rgba(255,255,255,.025) !important;
+  border-color: rgba(255,255,255,.32);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+textarea:focus { background: rgba(255,255,255,.045) !important; }
+.status { background: rgba(255,255,255,.035) !important; }
