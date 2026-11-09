@@ -127,5 +127,5 @@ textarea{background:rgba(5,8,13,.12);border-color:rgba(255,255,255,.3);-webkit-b
 textarea:focus{background:rgba(8,11,17,.2)}
 @media(max-width:680px){
   .glass-panel{-webkit-backdrop-filter:blur(14px) saturate(180%);backdrop-filter:blur(14px) saturate(180%)}
-  .glass-panel:after,.metric:after,.factor:after,.outcome:after,.mode-option:after{opacity:.3;filter:none}
+  .glass-panel:after,.metric:after,.factor:after,.outcome:after,.mode-option:after{opacity:.32;filter:url(#stratos-glass-warp) saturate(1.12)}
 }
