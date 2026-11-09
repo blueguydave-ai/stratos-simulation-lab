@@ -37,15 +37,16 @@ module.exports = async function handler(req, res) {
     "",
     "RESEARCH PROTOCOL:",
     "1. Decompose the question into the sub-questions that must be answered. Search for each important dimension, not just the wording of the original question. Use multiple distinct search queries when useful.",
-    "2. Prioritize primary evidence: official statistics, regulators, legislation, company filings, academic papers, original datasets, institutional reports and direct documentation. Use reputable secondary sources to add context, interpretation and criticism.",
-    "3. Cross-check important claims across independent sources where possible. Distinguish primary evidence from commentary. Note publication dates and whether information may be outdated.",
-    "4. Search for counter-evidence, competing explanations, failed examples, incentives, conflicts of interest, hidden dependencies, omitted populations, implementation barriers and second-order effects.",
-    "5. Separate sourced facts, reasonable interpretations, estimates and unknowns. Never invent numbers, market sizes, rankings, quotes, named sources, dates or URLs.",
-    "6. For every important finding, explain why it matters and include the exact source URLs used when available. URLs must be from sources actually consulted in this research. Do not fabricate links.",
-    "7. Produce charts only when retrieved evidence supports real numeric values. Never manufacture values to make a chart. If reliable comparable data are unavailable, return an empty charts array and explain why.",
-    "8. Audit blind spots explicitly: what a quick answer would miss, what has not been verified, which assumptions could reverse the conclusion, and what further evidence would materially improve confidence.",
-    "9. Give practical recommendations tied to findings. Make them conditional where the evidence is uncertain. Include what to do first, what to monitor, and what would change the recommendation.",
-    "10. Be comprehensive but digestible. Lead with the answer, then layer evidence, context, charts, risks, gaps and actions. Avoid padding and generic advice.",
+    "2. Look for information asymmetries and fragmented clues: who knows what, who has incentives to disclose or conceal it, and what can be inferred from public traces such as filings, official registers, procurement records, pricing pages, product documentation, job postings, patents, academic repositories, public datasets, specialist forums, customer reviews and local reporting. Use only sources that are publicly accessible to the search tool; never imply access to private, login-only or paywalled material that was not actually available.",
+    "3. Prioritize primary evidence: official statistics, regulators, legislation, company filings, academic papers, original datasets, institutional reports and direct documentation. Use reputable secondary sources to add context, interpretation and criticism.",
+    "4. Cross-check important claims across independent sources where possible. Distinguish primary evidence from commentary. Note publication dates and whether information may be outdated.",
+    "5. Search for counter-evidence, competing explanations, failed examples, incentives, conflicts of interest, hidden dependencies, omitted populations, implementation barriers and second-order effects.",
+    "6. Separate sourced facts, reasonable interpretations, estimates and unknowns. Never invent numbers, market sizes, rankings, quotes, named sources, dates or URLs.",
+    "7. For every important finding, explain why it matters and include the exact source URLs used when available. URLs must be from sources actually consulted in this research. Do not fabricate links.",
+    "8. Produce charts only when retrieved evidence supports real numeric values. Never manufacture values to make a chart. If reliable comparable data are unavailable, return an empty charts array and explain why.",
+    "9. Audit blind spots explicitly: what a quick answer would miss, what has not been verified, which assumptions could reverse the conclusion, and what further evidence would materially improve confidence.",
+    "10. Give practical recommendations tied to findings. Make them conditional where the evidence is uncertain. Include what to do first, what to monitor, and what would change the recommendation.",
+    "11. Be comprehensive but digestible. Lead with the answer, then layer evidence, context, charts, risks, gaps and actions. Avoid padding and generic advice.",
     "",
     "QUALITY AND HONESTY RULES:",
     "- Do not claim to have searched every website or found every possible fact. Describe the actual coverage and remaining gaps.",
@@ -83,6 +84,9 @@ module.exports = async function handler(req, res) {
       ],
       stakeholders: [
         { name: "Actor or group", role: "Role in this issue", interest: "Likely incentive or interest", influence: "High | Medium | Low", implication: "What to watch" }
+      ],
+      information_asymmetries: [
+        { actor: "Who may hold an information advantage", information_advantage: "What they may know or control", public_evidence: "Public traces that reveal part of the picture", why_it_matters: "How the information gap changes decisions or bargaining power", how_to_verify: "A practical verification path", source_urls: ["exact consulted URL"] }
       ],
       opportunities: [
         { title: "Opportunity", why_now: "Evidence-based reason", practical_move: "Concrete action", effort: "Low | Medium | High", potential: "Low | Medium | High", source_urls: ["exact consulted URL"] }
@@ -147,7 +151,7 @@ module.exports = async function handler(req, res) {
       if (!Array.isArray(items)) return [];
       return items.filter(url => typeof url === "string" && allowedUrls.has(url)).slice(0, 8);
     };
-    for (const key of ["key_findings", "evidence_points", "landscape", "competitive_landscape", "market_segments", "opportunities", "risks"]) {
+    for (const key of ["key_findings", "evidence_points", "landscape", "competitive_landscape", "market_segments", "information_asymmetries", "opportunities", "risks"]) {
       if (!Array.isArray(report[key])) report[key] = [];
       report[key] = report[key].slice(0, 30).map(item => ({ ...item, source_urls: sanitizeUrls(item.source_urls) }));
     }
