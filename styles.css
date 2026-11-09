@@ -251,3 +251,7 @@ textarea:focus{background:rgba(5,8,13,.13)}
   .outcome summary{padding:17px}
   .outcome-title{font-size:15px}
 }
+
+/* Keep the source photograph geometrically stable so the glass edge can sample the same scene. */
+.backdrop-photo{transform:scale(1);animation:photo-arrive 1.8s var(--ease) both}
+@keyframes photo-arrive{from{transform:scale(1);filter:brightness(.72) blur(2px)}to{transform:scale(1);filter:brightness(1) blur(0)}}
