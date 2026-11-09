@@ -25,3 +25,32 @@ if(!section.querySelector(".more-row")){const row=make("div","more-row");const b
 if(!append)resultsBox.append(make("p","disclaimer",data.caveat||"Likelihood labels are comparative judgments, not measured probabilities. These are scenarios to test, not guarantees."));}
 async function expandOutcomes(){if(!currentAnalysis||expanding)return;expanding=true;const button=resultsBox.querySelector(".more-button");button.disabled=true;button.textContent="Exploring additional possibilities...";showStatus("Searching for additional distinct outcomes within the same context boundary...");try{const response=await fetch("/api/outcomes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenario:scenarioInput.value.trim(),scope:currentScope,action:"expand",existing_outcomes:currentAnalysis.outcomes.map(item=>item.title)})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"Could not expand the outcome set.");const extra=payload.analysis;const seen=new Set(currentAnalysis.outcomes.map(item=>String(item.title||"").toLowerCase()));const fresh=(extra.outcomes||[]).filter(item=>!seen.has(String(item.title||"").toLowerCase()));if(!fresh.length)throw new Error("No meaningfully distinct additional outcomes were found at this scope. Try a new analysis with the expanded-context mode to widen the lens.");fresh.forEach((item,i)=>item.rank=currentAnalysis.outcomes.length+i+1);currentAnalysis.outcomes.push(...fresh);render({...currentAnalysis,outcomes:fresh},true);statusBox.hidden=true;button.textContent="Explore more possible outcomes";}catch(error){showStatus(error.message||"Unable to expand outcomes.",true);button.textContent="Try exploring more outcomes";}finally{expanding=false;button.disabled=false;}}
 runButton.addEventListener("click",async()=>{const scenario=scenarioInput.value.trim();if(scenario.length<20){showStatus("Describe the situation in a little more detail so STRATOS has enough context to analyse it.",true);scenarioInput.focus();return;}runButton.disabled=true;runButton.querySelector("span:first-child").textContent="Exploring...";resultsBox.hidden=true;resultsBox.replaceChildren();currentAnalysis=null;showStatus(currentScope==="expanded"?"Widening the lens carefully to find relevant surrounding influences...":"Mapping the immediate situation and its plausible outcomes...");try{const response=await fetch("/api/outcomes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenario,scope:currentScope,action:"initial"})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"STRATOS could not complete the analysis. Please try again.");if(!payload.analysis||!Array.isArray(payload.analysis.outcomes)||payload.analysis.outcomes.length<5)throw new Error("The analysis came back incomplete. Please run it again.");currentAnalysis=payload.analysis;render(currentAnalysis);statusBox.hidden=true;resultsBox.hidden=false;resultsBox.scrollIntoView({behavior:"smooth",block:"start"});}catch(error){showStatus(error.message||"Something went wrong. Please try again.",true);}finally{runButton.disabled=false;runButton.querySelector("span:first-child").textContent="Explore outcomes";}});
+
+
+// Scroll-reveal motion for analysis sections and dynamically-created result cards.
+const revealTargets = ".results-head, .metrics, .section-block, .disclaimer, .factor, .outcome, .more-row";
+const revealObserver = "IntersectionObserver" in window
+  ? new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.08, rootMargin: "0px 0px -36px 0px" })
+  : null;
+
+function activateScrollReveals(root = document) {
+  root.querySelectorAll(revealTargets).forEach((element, index) => {
+    if (element.classList.contains("reveal-on-scroll")) return;
+    element.classList.add("reveal-on-scroll");
+    element.style.setProperty("--reveal-delay", (Math.min(index % 5, 4) * 65) + "ms");
+    if (revealObserver) revealObserver.observe(element);
+    else element.classList.add("is-visible");
+  });
+}
+
+activateScrollReveals();
+if ("MutationObserver" in window) {
+  const resultsMotionObserver = new MutationObserver(() => activateScrollReveals(resultsBox));
+  resultsMotionObserver.observe(resultsBox, { childList: true, subtree: true });
+}
