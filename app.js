@@ -112,8 +112,10 @@ if ("MutationObserver" in window) {
       float veil=cloud*.48+lowFog*.34;
 
       // Restrained shafts: broad and blurred, not graphic streaks.
-      float beamA=exp(-pow((q.x+.31+sin(t)*.045)*2.35,2.))*smoothstep(.02,.86,p.y);
-      float beamB=exp(-pow((q.x-.38-cos(t*.8)*.035)*3.0,2.))*smoothstep(.08,.9,p.y);
+      float beamAx=(q.x+.31+sin(t)*.045)*2.35;
+      float beamA=exp(-(beamAx*beamAx))*smoothstep(.02,.86,p.y);
+      float beamBx=(q.x-.38-cos(t*.8)*.035)*3.0;
+      float beamB=exp(-(beamBx*beamBx))*smoothstep(.08,.9,p.y);
       float shafts=(beamA*.13+beamB*.075)*(0.4+n1*.6);
 
       // Tiny suspended particles, intentionally sparse and low contrast.
