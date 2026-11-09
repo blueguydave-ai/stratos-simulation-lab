@@ -72,3 +72,60 @@ textarea::placeholder{color:rgba(238,231,219,.58)}
 @keyframes details-open{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:680px){.shell{width:min(100% - 28px,980px)}.topbar{height:68px}.intro{padding:53px 0 26px}h1{font-size:clamp(39px,10vw,52px)}.input-panel{padding:19px;border-radius:21px}.panel-heading{align-items:flex-start;flex-direction:column;gap:8px}.mode-heading{align-items:flex-start;flex-direction:column;gap:8px}.mode-options{grid-template-columns:1fr}.mode-option{border-radius:16px;padding:15px}.metrics{gap:8px}.metric{padding:12px 10px;border-radius:14px}.metric strong{font-size:19px}.metric span{font-size:10px;line-height:1.4}.factor-grid{grid-template-columns:1fr}.outcome summary{grid-template-columns:32px 1fr;gap:10px;padding:15px}.likelihood{grid-column:2}.outcome-body{padding:0 15px 16px 57px}.footer{flex-direction:column;gap:8px}.top-note{font-size:8px;letter-spacing:.1em}.backdrop-photo{object-position:54% center}.smoke{width:85vw;height:75vw}.glass-panel{-webkit-backdrop-filter:blur(22px) saturate(165%);backdrop-filter:blur(22px) saturate(165%)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.reveal-on-scroll{opacity:1;transform:none}}
+
+
+/* GLASS 2.0 — clearer transparency, real background refraction at the rim. */
+.glass-filter-defs{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+.glass-panel{
+  background:linear-gradient(132deg,rgba(255,255,255,.105) 0%,rgba(255,255,255,.025) 24%,rgba(17,22,30,.075) 62%,rgba(10,14,21,.13) 100%);
+  -webkit-backdrop-filter:blur(17px) saturate(190%) brightness(1.12);
+  backdrop-filter:blur(17px) saturate(190%) brightness(1.12);
+  border-color:rgba(255,255,255,.38);
+  box-shadow:0 30px 90px rgba(0,0,0,.24),0 8px 28px rgba(0,0,0,.12),
+    inset 0 1.5px 1px rgba(255,255,255,.66),inset 0 -1px 1px rgba(255,255,255,.2),
+    inset 0 0 38px rgba(255,255,255,.065),0 0 0 1px rgba(210,225,255,.07);
+}
+.glass-panel:before{
+  height:1px;
+  opacity:1;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.95) 16%,rgba(238,218,190,.95) 42%,rgba(190,220,255,.9) 72%,transparent);
+  filter:blur(.2px);
+}
+/* A second, perfectly aligned copy of the scene is displaced by an SVG noise map.
+   The radial mask confines the lensing to the glass perimeter, like a thick glass edge. */
+.glass-panel:after,.metric:after,.factor:after,.outcome:after,.mode-option:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  border-radius:inherit;
+  pointer-events:none;
+  background-image:url('/assets/chess-background.jpg');
+  background-size:cover;
+  background-position:center 46%;
+  background-attachment:fixed;
+  filter:url(#stratos-glass-warp) saturate(1.28) contrast(1.08);
+  opacity:.46;
+  -webkit-mask-image:radial-gradient(ellipse at center,transparent 57%,rgba(0,0,0,.16) 69%,#000 100%);
+  mask-image:radial-gradient(ellipse at center,transparent 57%,rgba(0,0,0,.16) 69%,#000 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.24),inset 0 0 18px rgba(255,255,255,.11);
+}
+.glass-panel:after{inset:0;border-radius:inherit;background-color:rgba(255,255,255,.025)}
+.glass-panel>* ,.metric>* ,.factor>* ,.outcome>* ,.mode-option>*{position:relative;z-index:1}
+.metric,.factor,.outcome,.mode-option{
+  background:linear-gradient(135deg,rgba(255,255,255,.085),rgba(12,17,25,.105));
+  border-color:rgba(255,255,255,.31);
+  -webkit-backdrop-filter:blur(15px) saturate(185%) brightness(1.1);
+  backdrop-filter:blur(15px) saturate(185%) brightness(1.1);
+  box-shadow:inset 0 1px rgba(255,255,255,.42),inset 0 -1px rgba(255,255,255,.12),0 13px 34px rgba(0,0,0,.13);
+}
+.mode-option{background:linear-gradient(135deg,rgba(255,255,255,.09),rgba(255,255,255,.025))}
+.mode-option.selected{background:linear-gradient(135deg,rgba(239,213,176,.19),rgba(255,255,255,.045))}
+.outcome{background:linear-gradient(125deg,rgba(255,255,255,.09),rgba(12,17,24,.12))}
+.outcome:hover{background:linear-gradient(125deg,rgba(255,255,255,.14),rgba(12,17,24,.15))}
+textarea{background:rgba(5,8,13,.12);border-color:rgba(255,255,255,.3);-webkit-backdrop-filter:blur(8px) saturate(165%);backdrop-filter:blur(8px) saturate(165%)}
+textarea:focus{background:rgba(8,11,17,.2)}
+@media(max-width:680px){
+  .glass-panel{-webkit-backdrop-filter:blur(14px) saturate(180%);backdrop-filter:blur(14px) saturate(180%)}
+  .glass-panel:after,.metric:after,.factor:after,.outcome:after,.mode-option:after{opacity:.3;filter:none}
+}
