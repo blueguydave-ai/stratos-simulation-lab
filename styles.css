@@ -365,3 +365,17 @@ h1 span{
     opacity: 1; transform: none; filter: none; transition: none; will-change: auto;
   }
 }
+
+
+/* WebGL atmosphere sits in the background stack, beneath all readable interface content. */
+.atmosphere-webgl{
+  position:absolute;inset:0;z-index:1;width:100%;height:100%;
+  display:block;pointer-events:none;opacity:.82;
+  mix-blend-mode:screen;
+}
+.backdrop-vignette{z-index:2;pointer-events:none}
+.smoke{z-index:3;opacity:.07}
+.backdrop-grain{z-index:4}
+.shell{z-index:5}
+@media(max-width:680px){.atmosphere-webgl{opacity:.56}}
+@media(prefers-reduced-motion:reduce){.atmosphere-webgl{opacity:.35}}
