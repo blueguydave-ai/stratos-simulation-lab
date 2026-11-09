@@ -209,6 +209,37 @@ function renderResearchReport(payload) {
     section.append(grid);
   }
 
+  if ((report.competitive_landscape || []).length) {
+    const section = researchSection(researchResults, "Competitors, alternatives and substitutes", "05 / COMPETITIVE LANDSCAPE");
+    const grid = researchNode("div", "research-card-grid");
+    report.competitive_landscape.forEach(item => {
+      const card = researchNode("article", "research-card");
+      card.append(researchNode("h4", "", item.name || "Market player"));
+      if (item.positioning) card.append(researchNode("p", "research-card-body", item.positioning));
+      if (item.offer_or_model) card.append(researchNode("p", "research-card-meta", "Offer / model: " + item.offer_or_model));
+      if (item.strengths && item.strengths.length) card.append(researchNode("p", "research-card-implication", "Strengths: " + item.strengths.join(" · ")));
+      if (item.weaknesses_or_gaps && item.weaknesses_or_gaps.length) card.append(researchNode("p", "research-card-meta", "Weaknesses / gaps: " + item.weaknesses_or_gaps.join(" · ")));
+      researchSourceLinks(card, item.source_urls, sourceMap);
+      grid.append(card);
+    });
+    section.append(grid);
+  }
+
+  if ((report.market_segments || []).length) {
+    const section = researchSection(researchResults, "Who is underserved, and why", "06 / CUSTOMER & MARKET SEGMENTS");
+    const grid = researchNode("div", "research-card-grid");
+    report.market_segments.forEach(item => {
+      const card = researchNode("article", "research-card");
+      card.append(researchNode("h4", "", item.segment || "Market segment"));
+      if (item.need) card.append(researchNode("p", "research-card-body", "Need: " + item.need));
+      if (item.unmet_need) card.append(researchNode("p", "research-card-implication", "Potential gap: " + item.unmet_need));
+      if (item.barriers && item.barriers.length) card.append(researchNode("p", "research-card-meta", "Barriers: " + item.barriers.join(" · ")));
+      researchSourceLinks(card, item.source_urls, sourceMap);
+      grid.append(card);
+    });
+    section.append(grid);
+  }
+
   if ((report.stakeholders || []).length) {
     const section = researchSection(researchResults, "Who influences the system", "05 / STAKEHOLDERS");
     const grid = researchNode("div", "research-card-grid");
