@@ -163,7 +163,7 @@ if (navigator.userAgentData) document.documentElement.classList.add("supports-li
       vec2 local=fract(p*vec2(38.*aspect,26.))-.5;
       float drift=time*(.012+fract(rnd*8.)*.018);
       local.y+=drift;
-      float dust=smoothstep(.035,.0,length(local)) * step(.992,rnd);
+      float dust=(1.0-smoothstep(0.0,.035,length(local))) * step(.992,rnd);
       dust*=.12+.12*sin(time*.7+rnd*30.);
 
       vec3 smokeColor=vec3(.62,.68,.75);
