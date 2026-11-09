@@ -58,47 +58,6 @@ if ("MutationObserver" in window) {
 }
 
 
-// SVG displacement in backdrop-filter is Chromium-only in current browser engines.
-if (navigator.userAgentData) document.documentElement.classList.add("supports-live-refraction");
-
-// Keep the refracted photo fragment perfectly aligned with the fixed chess backdrop.
-// This is a Safari-friendly visual fallback: it bends the uploaded scene itself at each glass rim.
-(function syncGlassScene(){
-  const photo=document.querySelector(".backdrop-photo");
-  if(!photo)return;
-  let frame=0;
-  function update(){
-    frame=0;
-    const vw=window.innerWidth, vh=window.innerHeight;
-    const nw=photo.naturalWidth||1920, nh=photo.naturalHeight||1080;
-    const scale=Math.max(vw/nw,vh/nh);
-    const sceneW=nw*scale, sceneH=nh*scale;
-    const sceneLeft=(vw-sceneW)*.5;
-    const sceneTop=(vh-sceneH)*.46;
-    document.querySelectorAll(".glass-panel,.metric,.factor,.outcome,.mode-option").forEach(el=>{
-      const rect=el.getBoundingClientRect();
-      el.style.setProperty("--scene-w",sceneW+"px");
-      el.style.setProperty("--scene-h",sceneH+"px");
-      el.style.setProperty("--scene-x",(sceneLeft-rect.left)+"px");
-      el.style.setProperty("--scene-y",(sceneTop-rect.top)+"px");
-    });
-  }
-  function schedule(){if(!frame)frame=requestAnimationFrame(update)}
-  photo.addEventListener("load",schedule,{once:true});
-  window.addEventListener("scroll",schedule,{passive:true});
-  window.addEventListener("resize",schedule,{passive:true});
-  if("ResizeObserver" in window){
-    const ro=new ResizeObserver(schedule);
-    ro.observe(document.documentElement);
-  }
-  if("MutationObserver" in window){
-    const mo=new MutationObserver(schedule);
-    mo.observe(document.getElementById("results"),{childList:true,subtree:true});
-  }
-  schedule();
-})();
-
-
 /* STRATOS ATMOSPHERE — lightweight WebGL/GLSL scene behind the interface.
    The shader renders only into the fixed backdrop layer, never onto UI panels. */
 (function initStratosAtmosphere(){
@@ -148,14 +107,14 @@ if (navigator.userAgentData) document.documentElement.classList.add("supports-li
       // Broad, slow-moving smoke banks with soft, layered structure.
       float n1=fbm(vec2(q.x*1.45+t*.7,q.y*2.2-t*.18));
       float n2=fbm(vec2(q.x*2.2-t*.35,q.y*3.1+t*.12)+7.4);
-      float cloud=smoothstep(.43,.79,n1*.66+n2*.34);
-      float lowFog=smoothstep(.34,.82,fbm(vec2(q.x*1.1-t*.25,q.y*1.8+2.8)));
-      float veil=cloud*.18+lowFog*.12;
+      float cloud=smoothstep(.36,.68,n1*.62+n2*.38);
+      float lowFog=smoothstep(.30,.72,fbm(vec2(q.x*1.1-t*.25,q.y*1.8+2.8)));
+      float veil=cloud*.48+lowFog*.34;
 
       // Restrained shafts: broad and blurred, not graphic streaks.
-      float beamA=exp(-pow((q.x+.31+sin(t)*.045)*3.0,2.))*smoothstep(.05,.9,p.y);
-      float beamB=exp(-pow((q.x-.38-cos(t*.8)*.035)*4.0,2.))*smoothstep(.12,.92,p.y);
-      float shafts=(beamA*.045+beamB*.025)*(0.45+n1*.55);
+      float beamA=exp(-pow((q.x+.31+sin(t)*.045)*2.35,2.))*smoothstep(.02,.86,p.y);
+      float beamB=exp(-pow((q.x-.38-cos(t*.8)*.035)*3.0,2.))*smoothstep(.08,.9,p.y);
+      float shafts=(beamA*.13+beamB*.075)*(0.4+n1*.6);
 
       // Tiny suspended particles, intentionally sparse and low contrast.
       vec2 cell=floor(p*vec2(38.*aspect,26.));
@@ -170,12 +129,12 @@ if (navigator.userAgentData) document.documentElement.classList.add("supports-li
       vec3 warmColor=vec3(.76,.64,.48);
       float warm= smoothstep(.15,.8,p.x)*smoothstep(.1,.8,p.y);
       vec3 color=mix(smokeColor,warmColor,warm*.28);
-      float alpha=veil*.34+shafts+ dust;
+      float alpha=veil*.62+shafts+dust;
       // Fade at the perimeter so the photo remains dominant.
       float edge=smoothstep(0.,.18,p.x)*smoothstep(0.,.18,1.-p.x)
                 *smoothstep(0.,.16,p.y)*smoothstep(0.,.16,1.-p.y);
       alpha*=edge;
-      gl_FragColor=vec4(color,clamp(alpha,0.,.16));
+      gl_FragColor=vec4(color,clamp(alpha,0.,.38));
     }
   `;
   function compile(type,source){
