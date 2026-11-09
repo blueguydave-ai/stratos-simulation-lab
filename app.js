@@ -27,8 +27,8 @@ async function expandOutcomes(){if(!currentAnalysis||expanding)return;expanding=
 runButton.addEventListener("click",async()=>{const scenario=scenarioInput.value.trim();if(scenario.length<20){showStatus("Describe the situation in a little more detail so STRATOS has enough context to analyse it.",true);scenarioInput.focus();return;}runButton.disabled=true;runButton.querySelector("span:first-child").textContent="Exploring...";resultsBox.hidden=true;resultsBox.replaceChildren();currentAnalysis=null;showStatus(currentScope==="expanded"?"Widening the lens carefully to find relevant surrounding influences...":"Mapping the immediate situation and its plausible outcomes...");try{const response=await fetch("/api/outcomes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenario,scope:currentScope,action:"initial"})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"STRATOS could not complete the analysis. Please try again.");if(!payload.analysis||!Array.isArray(payload.analysis.outcomes)||payload.analysis.outcomes.length<5)throw new Error("The analysis came back incomplete. Please run it again.");currentAnalysis=payload.analysis;render(currentAnalysis);statusBox.hidden=true;resultsBox.hidden=false;resultsBox.scrollIntoView({behavior:"smooth",block:"start"});}catch(error){showStatus(error.message||"Something went wrong. Please try again.",true);}finally{runButton.disabled=false;runButton.querySelector("span:first-child").textContent="Explore outcomes";}});
 
 
-// Scroll-reveal motion for analysis sections and dynamically-created result cards.
-const revealTargets = ".results-head, .metrics, .section-block, .disclaimer, .factor, .outcome, .more-row";
+// Each glass panel and result card reveals independently as it enters the viewport.
+const revealTargets = ".input-panel, #status, .results-head, .metrics, .section-block, .disclaimer, .factor, .outcome, .more-row";
 const revealObserver = "IntersectionObserver" in window
   ? new IntersectionObserver((entries, observer) => {
       entries.forEach(entry => {
@@ -36,14 +36,16 @@ const revealObserver = "IntersectionObserver" in window
         entry.target.classList.add("is-visible");
         observer.unobserve(entry.target);
       });
-    }, { threshold: 0.08, rootMargin: "0px 0px -36px 0px" })
+    }, { threshold: 0.12, rootMargin: "0px 0px -55px 0px" })
   : null;
 
 function activateScrollReveals(root = document) {
-  root.querySelectorAll(revealTargets).forEach((element, index) => {
+  root.querySelectorAll(revealTargets).forEach(element => {
     if (element.classList.contains("reveal-on-scroll")) return;
     element.classList.add("reveal-on-scroll");
-    element.style.setProperty("--reveal-delay", (Math.min(index % 5, 4) * 65) + "ms");
+    const siblings = element.parentElement ? Array.from(element.parentElement.children) : [];
+    const siblingIndex = Math.max(0, siblings.indexOf(element));
+    element.style.setProperty("--reveal-delay", (Math.min(siblingIndex, 5) * 85) + "ms");
     if (revealObserver) revealObserver.observe(element);
     else element.classList.add("is-visible");
   });
