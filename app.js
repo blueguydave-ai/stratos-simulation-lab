@@ -30,11 +30,11 @@ runButton.addEventListener("click",async()=>{const scenario=scenarioInput.value.
 // Each panel/card reveals independently with a vertical-only motion; no depth blur or scale.
 const revealTargets = ".input-panel, .guide-panel, #status, .results-head, .metrics, .section-title, .disclaimer, .factor, .outcome, .more-row";
 const revealObserver = "IntersectionObserver" in window
-  ? new IntersectionObserver((entries, observer) => {
+  ? new IntersectionObserver(entries => {
       entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add("is-visible");
-        observer.unobserve(entry.target);
+        // Keep observing each element. Remove the visible state after it leaves
+        // the viewport so its entrance transition can replay on the next visit.
+        entry.target.classList.toggle("is-visible", entry.isIntersecting);
       });
     }, { threshold: 0.12, rootMargin: "0px 0px -55px 0px" })
   : null;
