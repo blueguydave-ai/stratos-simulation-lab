@@ -241,7 +241,7 @@ function renderResearchReport(payload) {
   }
 
   if ((report.stakeholders || []).length) {
-    const section = researchSection(researchResults, "Who influences the system", "05 / STAKEHOLDERS");
+    const section = researchSection(researchResults, "Who influences the system", "07 / STAKEHOLDERS");
     const grid = researchNode("div", "research-card-grid");
     report.stakeholders.forEach(item => {
       const card = researchNode("article", "research-card");
@@ -256,7 +256,7 @@ function renderResearchReport(payload) {
   }
 
   if ((report.information_asymmetries || []).length) {
-    const section = researchSection(researchResults, "Who knows what others don't", "07 / INFORMATION ASYMMETRIES");
+    const section = researchSection(researchResults, "Who knows what others don't", "08 / INFORMATION ASYMMETRIES");
     const list = researchNode("div", "research-evidence-list");
     report.information_asymmetries.forEach(item => {
       const card = researchNode("article", "research-evidence-item");
@@ -272,7 +272,7 @@ function renderResearchReport(payload) {
   }
 
   if ((report.opportunities || []).length) {
-    const section = researchSection(researchResults, "Where the opportunities are", "06 / OPPORTUNITIES");
+    const section = researchSection(researchResults, "Where the opportunities are", "09 / OPPORTUNITIES");
     const grid = researchNode("div", "research-card-grid");
     report.opportunities.forEach(item => {
       const card = researchNode("article", "research-card");
@@ -287,7 +287,7 @@ function renderResearchReport(payload) {
   }
 
   if ((report.risks || []).length) {
-    const section = researchSection(researchResults, "What could go wrong", "07 / RISK REGISTER");
+    const section = researchSection(researchResults, "What could go wrong", "10 / RISK REGISTER");
     const grid = researchNode("div", "research-card-grid");
     report.risks.forEach(item => {
       const card = researchNode("article", "research-card research-risk-card");
@@ -302,7 +302,7 @@ function renderResearchReport(payload) {
   }
 
   if ((report.blind_spot_audit || []).length) {
-    const section = researchSection(researchResults, "What a quick answer might miss", "08 / BLIND-SPOT AUDIT");
+    const section = researchSection(researchResults, "What a quick answer might miss", "11 / BLIND-SPOT AUDIT");
     const list = researchNode("div", "research-blindspot-list");
     report.blind_spot_audit.forEach(item => {
       const card = researchNode("article", "research-blindspot");
@@ -317,7 +317,7 @@ function renderResearchReport(payload) {
   }
 
   if ((report.open_questions || []).length) {
-    const section = researchSection(researchResults, "What remains unanswered", "09 / OPEN QUESTIONS");
+    const section = researchSection(researchResults, "What remains unanswered", "12 / OPEN QUESTIONS");
     const list = researchNode("div", "research-evidence-list");
     report.open_questions.forEach(item => {
       const card = researchNode("article", "research-evidence-item");
@@ -330,7 +330,7 @@ function renderResearchReport(payload) {
   }
 
   if ((report.recommendations || []).length) {
-    const section = researchSection(researchResults, "What to do with the findings", "10 / RECOMMENDED ACTIONS");
+    const section = researchSection(researchResults, "What to do with the findings", "13 / RECOMMENDED ACTIONS");
     const list = researchNode("div", "research-action-list");
     report.recommendations.forEach(item => {
       const card = researchNode("article", "research-action");
@@ -344,7 +344,7 @@ function renderResearchReport(payload) {
   }
 
   if ((report.watchlist || []).length) {
-    const section = researchSection(researchResults, "Signals worth watching", "11 / MONITORING");
+    const section = researchSection(researchResults, "Signals worth watching", "14 / MONITORING");
     const grid = researchNode("div", "research-card-grid");
     report.watchlist.forEach(item => {
       const card = researchNode("article", "research-card");
@@ -359,7 +359,7 @@ function renderResearchReport(payload) {
   const limitations = report.limitations || [];
   const trail = Array.from(new Set([...(payload.search_queries || []), ...(report.search_queries || [])])).slice(0, 30);
   if (limitations.length || trail.length || report.scope_and_method) {
-    const section = researchSection(researchResults, "Coverage, search trail and limitations", "12 / TRANSPARENCY");
+    const section = researchSection(researchResults, "Coverage, search trail and limitations", "15 / TRANSPARENCY");
     if (limitations.length) {
       const card = researchNode("article", "research-card research-transparency");
       card.append(researchNode("h4", "", "What could not be verified"));
@@ -377,7 +377,7 @@ function renderResearchReport(payload) {
   }
 
   if (sources.length) {
-    const section = researchSection(researchResults, "Sources consulted", "13 / SOURCE LIBRARY");
+    const section = researchSection(researchResults, "Sources consulted", "16 / SOURCE LIBRARY");
     const list = researchNode("div", "research-sources-grid");
     sources.forEach((source, index) => {
       const card = researchNode("a", "research-source");
