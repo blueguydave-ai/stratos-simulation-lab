@@ -25,6 +25,16 @@
     <p class="hero-footnote">Observe deeper · Think wider · Move deliberately</p>
   </section>
 
+  <nav class="module-switcher" aria-label="STRATOS modules">
+    <button class="module-tab is-active" id="outcomes-tab" type="button" aria-pressed="true">
+      <span class="module-tab-index">01</span><span><strong>Scenario explorer</strong><small>Map outcomes and causal forces</small></span>
+    </button>
+    <button class="module-tab" id="research-tab" type="button" aria-pressed="false">
+      <span class="module-tab-index">02</span><span><strong>Research expert</strong><small>Investigate the evidence behind a question</small></span>
+    </button>
+  </nav>
+
+  <section id="outcomes-module" class="module-view" aria-label="Scenario explorer">
   <section class="workspace" aria-label="Scenario analysis workspace">
     <div class="input-panel">
       <div class="panel-topline">
@@ -72,6 +82,70 @@
 
   <section id="status" aria-live="polite" hidden></section>
   <section id="results" hidden aria-live="polite"></section>
+  </section>
+
+  <section id="research-module" class="module-view" aria-label="Research Expert" hidden>
+    <div class="research-intro">
+      <p class="eyebrow">STRATOS / RESEARCH INTELLIGENCE</p>
+      <h2>Go beyond the obvious.<br><span>Follow the evidence.</span></h2>
+      <p>Investigate markets, industries, decisions, technologies, people, systems and complex questions. Find what matters, what conflicts, and what a quick search might miss.</p>
+    </div>
+
+    <section class="research-workspace" aria-label="Research setup">
+      <div class="input-panel research-input-panel">
+        <div class="panel-topline"><h2 class="panel-title">Define the investigation</h2><span class="panel-index">RESEARCH / 01</span></div>
+        <label class="field-label" for="research-question">What do you want to know?</label>
+        <textarea id="research-question" maxlength="4000" placeholder="Example: Is there an underserved opportunity for affordable premium skincare in Nigeria, and what would make entering this market difficult?" required></textarea>
+        <label class="field-label research-field-label" for="research-context">What prompted this research? <span>(optional)</span></label>
+        <textarea id="research-context" class="research-context-input" maxlength="5000" placeholder="Add your goals, constraints, current assumptions, decision you need to make, or anything the researcher should know..."></textarea>
+        <div class="research-field-grid">
+          <div>
+            <label class="field-label" for="research-focus">Research area</label>
+            <select id="research-focus" class="research-select">
+              <option>Auto-detect</option><option>Market and competition</option><option>Business and strategy</option><option>People and organizations</option><option>Technology and science</option><option>Policy and regulation</option><option>Economics and finance</option><option>Social and cultural systems</option><option>Personal decision</option><option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="research-geography">Country / region / market <span>(optional)</span></label>
+            <input id="research-geography" class="research-text-input" maxlength="120" placeholder="e.g. Nigeria, West Africa, global">
+          </div>
+          <div>
+            <label class="field-label" for="research-timeframe">Time horizon</label>
+            <select id="research-timeframe" class="research-select">
+              <option>Current and relevant historical context</option><option>Last 12 months</option><option>Last 5 years</option><option>Long-term / historical</option><option>Future outlook (label forecasts clearly)</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="research-depth">Research depth</label>
+            <select id="research-depth" class="research-select">
+              <option value="comprehensive" selected>Holistic deep investigation</option><option value="focused">Focused investigation</option>
+            </select>
+          </div>
+        </div>
+        <button id="research-run-button" class="primary-button" type="button"><span>Begin deep research</span><span class="button-arrow" aria-hidden="true">↗</span></button>
+        <p class="privacy-note"><i data-lucide="globe-2" aria-hidden="true"></i> Web-grounded research with linked sources. Your API key stays on the server.</p>
+      </div>
+
+      <aside class="guide-panel research-standard-panel" aria-label="Research standards">
+        <div>
+          <div class="guide-symbol"><i data-lucide="telescope" aria-hidden="true"></i></div>
+          <p class="section-eyebrow" style="margin:22px 0 0">The research standard</p>
+          <h3>Don't stop at the first plausible answer.</h3>
+          <ul class="guide-list">
+            <li><span>01</span> Search across relevant source types and perspectives.</li>
+            <li><span>02</span> Cross-check claims and challenge the first explanation.</li>
+            <li><span>03</span> Separate evidence, interpretation and unknowns.</li>
+            <li><span>04</span> Surface overlooked risks, incentives and dependencies.</li>
+            <li><span>05</span> Turn findings into actions and things to monitor.</li>
+          </ul>
+        </div>
+        <div class="guide-bottom">Evidence first.<br>Clarity over certainty.</div>
+      </aside>
+    </section>
+
+    <section id="research-status" class="research-status" aria-live="polite" hidden></section>
+    <section id="research-results" class="research-results" aria-live="polite" hidden></section>
+  </section>
 </main>
 <footer class="site-footer">
   <p>STRATOS — by David Jayy</p>
