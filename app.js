@@ -32,18 +32,11 @@ const revealTargets = ".input-panel, .guide-panel, #status, .results-head, .metr
 const revealObserver = "IntersectionObserver" in window
   ? new IntersectionObserver(entries => {
       entries.forEach(entry => {
-        const element = entry.target;
-        if (entry.isIntersecting) {
-          // Force a fresh animation cycle on every viewport entry.
-          element.classList.remove("is-entering");
-          void element.offsetWidth;
-          element.classList.add("is-entering");
-        } else {
-          // Remove the animation state while outside the viewport.
-          element.classList.remove("is-entering");
-        }
+        // Keep observing each element. Remove the visible state after it leaves
+        // the viewport so its entrance transition can replay on the next visit.
+        entry.target.classList.toggle("is-visible", entry.isIntersecting);
       });
-    }, { threshold: 0, rootMargin: "0px 0px -8% 0px" })
+    }, { threshold: 0.12, rootMargin: "0px 0px -55px 0px" })
   : null;
 
 function activateScrollReveals(root = document) {
@@ -54,7 +47,7 @@ function activateScrollReveals(root = document) {
     const siblingIndex = Math.max(0, siblings.indexOf(element));
     element.style.setProperty("--reveal-delay", (Math.min(siblingIndex, 5) * 105) + "ms");
     if (revealObserver) revealObserver.observe(element);
-    else element.classList.add("is-entering");
+    else element.classList.add("is-visible");
   });
 }
 
