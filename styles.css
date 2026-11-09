@@ -212,3 +212,12 @@ textarea:focus{border-color:rgba(200,168,121,.65);background:rgba(4,7,10,.7);box
 .research-report-disclaimer{margin:35px 2px 0;padding-top:17px;border-top:1px solid var(--line);color:var(--dim);font-size:9px;line-height:1.8}
 @media(max-width:800px){.research-workspace{grid-template-columns:1fr}.research-standard-panel{display:none}}
 @media(max-width:560px){.module-switcher{min-height:44px;gap:15px;padding:0 14px}.module-tab{gap:7px;padding:12px 1px 11px}.module-tab-index{font-size:7px}.module-tab strong{font-size:9px;letter-spacing:.055em}.research-intro{padding:52px 0 30px}.research-field-grid{grid-template-columns:1fr;gap:15px}.research-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.research-metric{padding:14px}.research-metric strong{font-size:24px}.research-card-grid,.research-sources-grid{grid-template-columns:1fr}.research-section{margin-top:39px}.research-section-title{font-size:18px}.research-card,.research-evidence-item,.research-chart,.research-blindspot,.research-action{padding:17px}.research-action{grid-template-columns:70px minmax(0,1fr);gap:10px}.research-results-head{padding:24px 20px}}
+
+/* Restrained blue typography accents — depth without visual dominance. */
+:root{--text-accent:#91b3c8;--text-accent-soft:#7897ab}
+.module-tab{color:var(--text-accent-soft)!important}
+.module-tab:hover{color:#b2cbd9!important}
+.module-tab.is-active{color:var(--text-accent)!important}
+.module-tab-index{color:rgba(145,179,200,.72)}
+.panel-index,.hero-footnote,.field-meta,.tag,.research-query-chip{color:var(--text-accent-soft)}
+.research-section-eyebrow,.research-results-kicker{color:var(--text-accent)}
