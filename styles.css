@@ -222,5 +222,36 @@ textarea:focus{border-color:rgba(200,168,121,.65);background:rgba(4,7,10,.7);box
 .panel-index,.hero-footnote,.field-meta,.tag,.research-query-chip{color:var(--text-accent-soft)}
 .research-section-eyebrow,.research-results-kicker{color:var(--text-accent)}
 
-/* STRATOS uploaded brand asset. */
-.brand-logo{display:block;flex:0 0 auto;width:34px;height:34px;object-fit:contain;object-position:center}
+/* Compact logo replaces the former S mark inside the existing header lockup. */
+.site-header .brand{display:flex;align-items:center;gap:13px;min-width:0}
+.site-header .brand-logo{
+  display:block!important;
+  position:static!important;
+  flex:0 0 30px!important;
+  width:30px!important;
+  min-width:30px!important;
+  max-width:30px!important;
+  height:30px!important;
+  min-height:30px!important;
+  max-height:30px!important;
+  aspect-ratio:1/1;
+  margin:0!important;
+  padding:0!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  transform:none!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+@media(max-width:560px){
+  .site-header .brand-logo{
+    flex-basis:26px!important;
+    width:26px!important;
+    min-width:26px!important;
+    max-width:26px!important;
+    height:26px!important;
+    min-height:26px!important;
+    max-height:26px!important;
+  }
+}
