@@ -56,6 +56,9 @@ if ("MutationObserver" in window) {
 }
 
 
+// SVG displacement in backdrop-filter is Chromium-only in current browser engines.
+if (navigator.userAgentData) document.documentElement.classList.add("supports-live-refraction");
+
 // Keep the refracted photo fragment perfectly aligned with the fixed chess backdrop.
 // This is a Safari-friendly visual fallback: it bends the uploaded scene itself at each glass rim.
 (function syncGlassScene(){
