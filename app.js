@@ -54,3 +54,41 @@ if ("MutationObserver" in window) {
   const resultsMotionObserver = new MutationObserver(() => activateScrollReveals(resultsBox));
   resultsMotionObserver.observe(resultsBox, { childList: true, subtree: true });
 }
+
+
+// Keep the refracted photo fragment perfectly aligned with the fixed chess backdrop.
+// This is a Safari-friendly visual fallback: it bends the uploaded scene itself at each glass rim.
+(function syncGlassScene(){
+  const photo=document.querySelector(".backdrop-photo");
+  if(!photo)return;
+  let frame=0;
+  function update(){
+    frame=0;
+    const vw=window.innerWidth, vh=window.innerHeight;
+    const nw=photo.naturalWidth||1920, nh=photo.naturalHeight||1080;
+    const scale=Math.max(vw/nw,vh/nh);
+    const sceneW=nw*scale, sceneH=nh*scale;
+    const sceneLeft=(vw-sceneW)*.5;
+    const sceneTop=(vh-sceneH)*.46;
+    document.querySelectorAll(".glass-panel,.metric,.factor,.outcome,.mode-option").forEach(el=>{
+      const rect=el.getBoundingClientRect();
+      el.style.setProperty("--scene-w",sceneW+"px");
+      el.style.setProperty("--scene-h",sceneH+"px");
+      el.style.setProperty("--scene-x",(sceneLeft-rect.left)+"px");
+      el.style.setProperty("--scene-y",(sceneTop-rect.top)+"px");
+    });
+  }
+  function schedule(){if(!frame)frame=requestAnimationFrame(update)}
+  photo.addEventListener("load",schedule,{once:true});
+  window.addEventListener("scroll",schedule,{passive:true});
+  window.addEventListener("resize",schedule,{passive:true});
+  if("ResizeObserver" in window){
+    const ro=new ResizeObserver(schedule);
+    ro.observe(document.documentElement);
+  }
+  if("MutationObserver" in window){
+    const mo=new MutationObserver(schedule);
+    mo.observe(document.getElementById("results"),{childList:true,subtree:true});
+  }
+  schedule();
+})();
