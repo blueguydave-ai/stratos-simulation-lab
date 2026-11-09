@@ -28,7 +28,7 @@ runButton.addEventListener("click",async()=>{const scenario=scenarioInput.value.
 
 
 // Each panel/card reveals independently with a vertical-only motion; no depth blur or scale.
-const revealTargets = ".input-panel, #status, .results-head, .metrics, .section-title, .disclaimer, .factor, .outcome, .more-row";
+const revealTargets = ".input-panel, .guide-panel, #status, .results-head, .metrics, .section-title, .disclaimer, .factor, .outcome, .more-row";
 const revealObserver = "IntersectionObserver" in window
   ? new IntersectionObserver((entries, observer) => {
       entries.forEach(entry => {
