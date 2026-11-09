@@ -3,39 +3,81 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080a0d">
 <meta name="description" content="STRATOS explores plausible outcomes, their causes, and hidden influences.">
 <title>STRATOS — Strategic Outcome Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="/styles.css">
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
 </head>
 <body>
-<header>
-  <a href="/" aria-label="STRATOS home">STRATOS</a>
-  <p>Strategic Outcome Explorer</p>
+<header class="site-header">
+  <a class="brand" href="/" aria-label="STRATOS home"><span class="brand-mark">S</span><span>STRATOS</span></a>
+  <div class="header-meta"><span class="system-indicator">Strategic intelligence</span><span>BY DAVID JAYY</span></div>
 </header>
 <main>
-  <section aria-labelledby="intro-title">
-    <h1 id="intro-title">Explore what could happen.</h1>
-    <p>Describe a situation. STRATOS maps plausible outcomes, the conditions behind them, and influences you may not have considered.</p>
+  <section class="hero" aria-labelledby="intro-title">
+    <p class="eyebrow">See beyond the obvious</p>
+    <h1 id="intro-title">Every situation has<br><span>more than one ending.</span></h1>
+    <p class="hero-copy">Explore what could happen next. Map the forces shaping a situation, uncover overlooked variables, and follow the outcomes hiding just beyond your current view.</p>
+    <p class="hero-footnote">Observe deeper · Think wider · Move deliberately</p>
   </section>
-  <section aria-labelledby="input-title">
-    <h2 id="input-title">Describe your situation</h2>
-    <label for="scenario">What is happening?</label>
-    <textarea id="scenario" maxlength="8000" placeholder="Describe the situation, decision or system you want to understand..." required></textarea>
-    <p id="char-count">0 / 8,000</p>
-    <fieldset>
-      <legend>How wide should STRATOS look?</legend>
-      <label><input type="radio" name="scope" value="focused" checked> Small context — examine immediate actors, variables, constants and constraints.</label>
-      <label><input type="radio" name="scope" value="expanded"> Small context + wider influences — include relevant surrounding systems and indirect forces.</label>
-    </fieldset>
-    <button id="run-button" type="button"><span>Explore outcomes</span><span aria-hidden="true">↗</span></button>
-    <p>Your description is sent for analysis. Your API key stays on the server.</p>
+
+  <section class="workspace" aria-label="Scenario analysis workspace">
+    <div class="input-panel reveal-on-scroll">
+      <div class="panel-topline">
+        <h2 class="panel-title">Set the situation</h2>
+        <span class="panel-index">STRATOS / 01</span>
+      </div>
+      <label class="field-label" for="scenario">What are you trying to understand?</label>
+      <textarea id="scenario" maxlength="8000" placeholder="Describe the situation, decision, system, people involved, what you want to achieve, and what seems uncertain..." required></textarea>
+      <div class="field-meta"><span>More context creates a sharper analysis.</span><span id="char-count">0 / 8,000</span></div>
+      <fieldset style="border:0;padding:0;margin:0">
+        <legend class="scope-heading">Choose your field of view</legend>
+        <div class="scope-options">
+          <label class="mode-option selected">
+            <input type="radio" name="scope" value="focused" checked>
+            <span class="mode-name">Focused lens</span>
+            <span class="mode-description">Examine immediate actors, variables, constants, and constraints.</span>
+          </label>
+          <label class="mode-option">
+            <input type="radio" name="scope" value="expanded">
+            <span class="mode-name">Wider lens</span>
+            <span class="mode-description">Reveal relevant surrounding systems, indirect forces, and second-order effects.</span>
+          </label>
+        </div>
+      </fieldset>
+      <button id="run-button" class="primary-button" type="button"><span>Explore possible outcomes</span><span class="button-arrow" aria-hidden="true">↗</span></button>
+      <p class="privacy-note"><i data-lucide="shield-check" aria-hidden="true"></i> Your scenario is analysed securely. Your API key stays on the server.</p>
+    </div>
+
+    <aside class="guide-panel reveal-on-scroll" aria-label="How STRATOS works">
+      <div>
+        <div class="guide-symbol"><i data-lucide="scan-eye" aria-hidden="true"></i></div>
+        <p class="section-eyebrow" style="margin:22px 0 0">The STRATOS method</p>
+        <h3>Look past the first answer.</h3>
+        <p>A useful decision starts by seeing the system around it—not just the event directly in front of you.</p>
+        <ul class="guide-list">
+          <li><span>01</span> Identify the forces shaping the situation.</li>
+          <li><span>02</span> Trace how those forces interact.</li>
+          <li><span>03</span> Explore distinct ways events may unfold.</li>
+          <li><span>04</span> Find early signs and conditions that could change the outcome.</li>
+        </ul>
+      </div>
+      <div class="guide-bottom">A lens for possibilities.<br>Not a machine for certainty.</div>
+    </aside>
   </section>
+
   <section id="status" aria-live="polite" hidden></section>
   <section id="results" hidden aria-live="polite"></section>
 </main>
-<footer>
-  <p>STRATOS by David Jayy</p>
-  <p>Scenarios are possibilities to test, not guaranteed predictions.</p>
+<footer class="site-footer">
+  <p>STRATOS — by David Jayy</p>
+  <p>Possibilities to examine. Not guaranteed predictions.</p>
 </footer>
 <script src="/app.js" defer></script>
+<script>window.addEventListener('DOMContentLoaded',()=>{if(window.lucide)window.lucide.createIcons();});</script>
 </body>
 </html>
