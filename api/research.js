@@ -72,6 +72,12 @@ module.exports = async function handler(req, res) {
       landscape: [
         { dimension: "Market, system, technology, policy or other relevant dimension", current_state: "What is happening", direction: "Growing | Declining | Stable | Mixed | Unclear", implication: "Why it matters", source_urls: ["exact consulted URL"] }
       ],
+      competitive_landscape: [
+        { name: "Competitor, substitute or incumbent", positioning: "Who they serve and how they compete", offer_or_model: "Product, service or business model", strengths: ["..."], weaknesses_or_gaps: ["..."], source_urls: ["exact consulted URL"] }
+      ],
+      market_segments: [
+        { segment: "Customer, user or stakeholder segment", need: "What they need", unmet_need: "Evidence-backed gap or underserved need", barriers: ["..."], source_urls: ["exact consulted URL"] }
+      ],
       charts: [
         { title: "Chart title", unit: "%, USD, count, index, etc.", takeaway: "What the comparison shows", caveat: "Data limitation", data: [{ label: "Category or date", value: 0, source_urls: ["exact consulted URL"] }] }
       ],
@@ -141,7 +147,7 @@ module.exports = async function handler(req, res) {
       if (!Array.isArray(items)) return [];
       return items.filter(url => typeof url === "string" && allowedUrls.has(url)).slice(0, 8);
     };
-    for (const key of ["key_findings", "evidence_points", "landscape", "opportunities", "risks"]) {
+    for (const key of ["key_findings", "evidence_points", "landscape", "competitive_landscape", "market_segments", "opportunities", "risks"]) {
       if (!Array.isArray(report[key])) report[key] = [];
       report[key] = report[key].slice(0, 30).map(item => ({ ...item, source_urls: sanitizeUrls(item.source_urls) }));
     }
