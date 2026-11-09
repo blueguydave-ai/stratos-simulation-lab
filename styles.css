@@ -254,3 +254,10 @@ textarea:focus{background:rgba(5,8,13,.13)}
 /* Keep the source photograph geometrically stable so the glass edge can sample the same scene. */
 .backdrop-photo{transform:scale(1);animation:photo-arrive 1.8s var(--ease) both}
 @keyframes photo-arrive{from{transform:scale(1);filter:brightness(.72) blur(2px)}to{transform:scale(1);filter:brightness(1) blur(0)}}
+
+h1 span{
+  font-family:"Instrument Serif",Georgia,serif;
+  font-size:1.12em;font-style:italic;font-weight:400;
+  letter-spacing:-.055em;color:#ead8b9;
+  text-shadow:0 5px 38px rgba(0,0,0,.36);
+}
