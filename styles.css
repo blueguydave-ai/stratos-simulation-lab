@@ -307,3 +307,61 @@ h1 span{
     will-change: auto;
   }
 }
+
+
+/* CORRECTED SCROLL + CINEMATIC DEPTH
+   Panels remain crisp and move vertically only. Atmospheric haze lives behind them. */
+.glass-panel { animation: none; }
+.input-panel.reveal-on-scroll { animation: none; }
+.section-block { margin-top: 54px; margin-bottom: 54px; }
+.metrics { margin-top: 34px; margin-bottom: 46px; }
+.factor-grid { row-gap: 22px; }
+.outcome-list { gap: 22px; }
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translate3d(0, 34px, 0);
+  filter: none !important;
+  transition:
+    opacity 850ms cubic-bezier(.22, 1, .36, 1),
+    transform 1050ms cubic-bezier(.22, 1, .36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: none !important;
+}
+/* Atmospheric depth plane: between the chess photograph and the UI, never over text. */
+.cinematic-backdrop::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: -12%;
+  pointer-events: none;
+  opacity: .25;
+  filter: blur(58px);
+  background:
+    radial-gradient(ellipse at 18% 38%, rgba(197,205,215,.22) 0%, transparent 34%),
+    radial-gradient(ellipse at 78% 56%, rgba(218,190,151,.14) 0%, transparent 30%),
+    radial-gradient(ellipse at 48% 88%, rgba(139,157,180,.13) 0%, transparent 36%);
+  animation: atmosphere-drift 32s ease-in-out infinite alternate;
+}
+@keyframes atmosphere-drift {
+  from { transform: translate3d(-1.2%, -1%, 0) scale(1); }
+  to { transform: translate3d(1.4%, 1.2%, 0) scale(1.045); }
+}
+@media (max-width: 680px) {
+  .section-block { margin-top: 42px; margin-bottom: 42px; }
+  .metrics { margin-top: 27px; margin-bottom: 36px; }
+  .factor-grid { row-gap: 16px; }
+  .outcome-list { gap: 17px; }
+  .reveal-on-scroll { transform: translate3d(0, 25px, 0); }
+  .cinematic-backdrop::after { opacity: .19; filter: blur(46px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-backdrop::after { animation: none; }
+  .reveal-on-scroll, .reveal-on-scroll.is-visible {
+    opacity: 1; transform: none; filter: none; transition: none; will-change: auto;
+  }
+}
