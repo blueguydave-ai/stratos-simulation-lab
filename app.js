@@ -255,6 +255,22 @@ function renderResearchReport(payload) {
     section.append(grid);
   }
 
+  if ((report.information_asymmetries || []).length) {
+    const section = researchSection(researchResults, "Who knows what others don't", "07 / INFORMATION ASYMMETRIES");
+    const list = researchNode("div", "research-evidence-list");
+    report.information_asymmetries.forEach(item => {
+      const card = researchNode("article", "research-evidence-item");
+      card.append(researchNode("h4", "", item.actor || "Information holder"));
+      if (item.information_advantage) card.append(researchNode("p", "", "Information advantage: " + item.information_advantage));
+      if (item.public_evidence) card.append(researchNode("p", "", "Public traces: " + item.public_evidence));
+      if (item.why_it_matters) card.append(researchNode("p", "research-card-implication", "Why it matters: " + item.why_it_matters));
+      if (item.how_to_verify) card.append(researchNode("p", "research-card-meta", "How to verify: " + item.how_to_verify));
+      researchSourceLinks(card, item.source_urls, sourceMap);
+      list.append(card);
+    });
+    section.append(list);
+  }
+
   if ((report.opportunities || []).length) {
     const section = researchSection(researchResults, "Where the opportunities are", "06 / OPPORTUNITIES");
     const grid = researchNode("div", "research-card-grid");
