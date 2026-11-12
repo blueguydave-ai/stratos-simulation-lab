@@ -97,14 +97,20 @@ module.exports = async function handler(req, res) {
         systemInstruction: { parts: [{ text: instructions }] },
         contents: [{ role: "user", parts: [{ text: "Analyse this situation within the selected scope and return the required JSON:\n\n" + scenario }] }],
         tools: profession || country ? [{ google_search: {} }] : undefined,
-        generationConfig: { responseMimeType: "application/json", temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
+        // Gemini does not support application/json response MIME type together with Google Search tools.
+        // Keep JSON-only instructions in the prompt when grounding is enabled; use constrained JSON mode otherwise.
+        generationConfig: { ...(profession || country ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
       })
     });
     const result = await upstream.json();
     if (!upstream.ok) return res.status(upstream.status === 429 ? 429 : 502).json({ error: result?.error?.message || "The AI provider rejected the request." });
     const output = result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim();
     if (!output) return res.status(502).json({ error: "The AI model returned an empty analysis. Please try again." });
-    const analysis = JSON.parse(output);
+    const cleaned = output.replace(/^\\s*```(?:json)?\\s*/i, "").replace(/\\s*```\\s*$/, "");
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("No JSON object in outcome response.");
+    const analysis = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
     if (!Array.isArray(analysis.outcomes)) return res.status(502).json({ error: "The analysis returned an unexpected outcome format." });
     if (action === "initial" && analysis.outcomes.length < 5) return res.status(502).json({ error: "The analysis returned too few distinct outcomes. Please run it again." });
     analysis.outcomes = analysis.outcomes.slice(0, action === "expand" ? 7 : 12).map((item, index) => ({ ...item, rank: index + 1 }));
