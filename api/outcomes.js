@@ -110,7 +110,7 @@ module.exports = async function handler(req, res) {
     analysis.outcomes = analysis.outcomes.slice(0, action === "expand" ? 7 : 12).map((item, index) => ({ ...item, rank: index + 1 }));
     const grounding = result?.candidates?.[0]?.groundingMetadata || {};
     const sources = (Array.isArray(grounding.groundingChunks) ? grounding.groundingChunks : [])
-      .filter(chunk => typeof chunk?.web?.uri === "string" && /^https?:\\/\\//i.test(chunk.web.uri))
+      .filter(chunk => typeof chunk?.web?.uri === "string" && /^https?:\/\//i.test(chunk.web.uri))
       .map(chunk => ({ title: chunk.web.title || chunk.web.uri, url: chunk.web.uri }))
       .filter((source, index, all) => all.findIndex(item => item.url === source.url) === index)
       .slice(0, 12);
