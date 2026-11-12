@@ -106,7 +106,7 @@ module.exports = async function handler(req, res) {
     if (!upstream.ok) return res.status(upstream.status === 429 ? 429 : 502).json({ error: result?.error?.message || "The AI provider rejected the request." });
     const output = result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim();
     if (!output) return res.status(502).json({ error: "The AI model returned an empty analysis. Please try again." });
-    const cleaned = output.replace(/^\\s*```(?:json)?\\s*/i, "").replace(/\\s*```\\s*$/, "");
+    const cleaned = output.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
     const firstBrace = cleaned.indexOf("{");
     const lastBrace = cleaned.lastIndexOf("}");
     if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("No JSON object in outcome response.");
