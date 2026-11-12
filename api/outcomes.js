@@ -96,7 +96,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: instructions }] },
         contents: [{ role: "user", parts: [{ text: "Analyse this situation within the selected scope and return the required JSON:\n\n" + scenario }] }],
-        tools: profession && country ? [{ google_search: {} }] : undefined,
+        tools: profession || country ? [{ google_search: {} }] : undefined,
         generationConfig: { responseMimeType: "application/json", temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
       })
     });
@@ -108,7 +108,16 @@ module.exports = async function handler(req, res) {
     if (!Array.isArray(analysis.outcomes)) return res.status(502).json({ error: "The analysis returned an unexpected outcome format." });
     if (action === "initial" && analysis.outcomes.length < 5) return res.status(502).json({ error: "The analysis returned too few distinct outcomes. Please run it again." });
     analysis.outcomes = analysis.outcomes.slice(0, action === "expand" ? 7 : 12).map((item, index) => ({ ...item, rank: index + 1 }));
-    return res.status(200).json({ analysis });
+    const grounding = result?.candidates?.[0]?.groundingMetadata || {};
+    const sources = (Array.isArray(grounding.groundingChunks) ? grounding.groundingChunks : [])
+      .filter(chunk => typeof chunk?.web?.uri === "string" && /^https?:\\/\\//i.test(chunk.web.uri))
+      .map(chunk => ({ title: chunk.web.title || chunk.web.uri, url: chunk.web.uri }))
+      .filter((source, index, all) => all.findIndex(item => item.url === source.url) === index)
+      .slice(0, 12);
+    if (analysis.professional_context && typeof analysis.professional_context === "object") {
+      analysis.professional_context.source_links = sources;
+    }
+    return res.status(200).json({ analysis, sources });
   } catch (error) {
     return res.status(500).json({ error: "Unable to reach the AI service or parse its response. Please try again." });
   }
