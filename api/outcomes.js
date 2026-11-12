@@ -8,6 +8,8 @@ module.exports = async function handler(req, res) {
   const scenario = typeof req.body?.scenario === "string" ? req.body.scenario.trim() : "";
   const scope = req.body?.scope === "expanded" ? "expanded" : "focused";
   const action = req.body?.action === "expand" ? "expand" : "initial";
+  const profession = typeof req.body?.profession === "string" ? req.body.profession.slice(0, 100) : "";
+  const country = typeof req.body?.country === "string" ? req.body.country.trim().slice(0, 120) : "";
   const existing = Array.isArray(req.body?.existing_outcomes) ? req.body.existing_outcomes.slice(0, 100).map(x => String(x).slice(0, 180)) : [];
   if (scenario.length < 20) return res.status(400).json({ error: "Please provide a more detailed description of the situation." });
   if (scenario.length > 8000) return res.status(413).json({ error: "The description is too long. Please keep it under 8,000 characters." });
@@ -41,6 +43,14 @@ module.exports = async function handler(req, res) {
   const instructions = [
     "You are STRATOS, a rigorous outcome-discovery and scenario-analysis engine. The user provides ONE natural-language description. Expose plausible ways the situation could unfold and the conditions that cause each. Build a provisional causal model, then challenge it. Do not merely paraphrase the input or generate generic pros and cons.",
     scopeRules,
+    "PROFESSIONAL AND COUNTRY CONTEXT:",
+    profession ? ("PROFESSION: " + profession) : "PROFESSION: Infer relevant roles only when supported by the scenario; otherwise keep the analysis cross-functional.",
+    country ? ("COUNTRY / JURISDICTION: " + country) : "COUNTRY / JURISDICTION: Do not assume a country. Mark local context as unknown when it matters.",
+    "When a profession is supplied, model actual work: workflows, decision rights, deliverables, tools, skills, standards, licensing or registration where applicable, client/patient/customer relationships, supervisors, colleagues, counterparties, liability, ethics, safety duties, commercial pressures, workload, career incentives, failure modes and quality controls. Include only relevant dimensions.",
+    "When a country is supplied, adapt the model to that jurisdiction. Distinguish law/regulation from local custom, institutional practice and employer policy. Consider relevant regulators, licensing bodies, labour rules, tax, procurement, payment infrastructure, professional associations, public/private sector differences, language, infrastructure and economic conditions where material. Never stereotype or assume uniform practice within a country.",
+    "For jurisdiction-specific legal, regulatory, licensing, tax or safety claims, prioritize current official or primary sources. If evidence is unavailable or conflicting, label the point unverified and identify what a local professional should confirm. Never invent statutes, rules, salary data, credentials or local customs.",
+    "Generate multiple distinct outcomes grounded in the selected profession and jurisdiction. Include routine, favourable, adverse, edge-case and second-order pathways where relevant. Model interactions among professionals, clients, managers, regulators, suppliers, institutions and the public. Account for limited information, competing incentives, workload, resource scarcity and local constraints.",
+    "If profession or country is not supplied, do not fabricate a profile. Treat missing context as an uncertainty.",
     "ANALYSIS METHOD:",
     "1. Separate facts explicitly stated by the user from inferences and unknowns. Never silently promote an assumption into a fact.",
     "2. Discover potentially relevant components within the selected scope: actors, groups, incentives, information gaps, influential variables, constants, constraints, resources, processes, dependencies, relationships, institutions, tools, infrastructure, feedback loops, bottlenecks and external forces. Include only components that can plausibly affect this situation.",
@@ -73,6 +83,7 @@ module.exports = async function handler(req, res) {
       key_drivers:["..."],
       outcomes:[{rank:1,title:"distinct outcome",category:"dominant driver",likelihood:"Higher|Moderate|Lower",description:"what happens",causal_chain:"cause to effect chain",conditions:["..."],drivers:["..."],early_signs:["..."],changing_conditions:["..."],blind_spot:"..."}],
       blind_spots:[{title:"...",why_it_matters:"..."}],
+      professional_context:{profession:"selected or inferred profession",country:"selected country or jurisdiction",workflow_nuances:["..."],local_practice_and_rules:["..."],role_dynamics:["..."],professional_risks:["..."],verification_gaps:["..."]},
       caveat:"how to interpret and test these scenarios"
     }, null, 2),
     "For expansion, outcomes may be empty only if no additional distinct outcomes can responsibly be identified. Do not put markdown fences or commentary outside the JSON."
@@ -85,7 +96,8 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: instructions }] },
         contents: [{ role: "user", parts: [{ text: "Analyse this situation within the selected scope and return the required JSON:\n\n" + scenario }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 14000 }
+        tools: profession && country ? [{ google_search: {} }] : undefined,
+        generationConfig: { responseMimeType: "application/json", temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
       })
     });
     const result = await upstream.json();
