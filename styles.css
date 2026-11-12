@@ -255,3 +255,15 @@ textarea:focus{border-color:rgba(200,168,121,.65);background:rgba(4,7,10,.7);box
     max-height:30px!important;
   }
 }
+
+
+/* Simulator framing switch: restrained, typographic and consistent with the STRATOS interface. */
+.simulator-mode-switch{display:flex;flex-direction:column;gap:10px;margin:23px 0 18px;padding-top:17px;border-top:1px solid var(--line)}
+.simulator-mode-caption{color:var(--text-accent-soft);font:8px 'DM Mono',monospace;letter-spacing:.16em}
+.simulator-mode-options{display:flex;flex-wrap:wrap;gap:7px}
+.simulator-mode-option{appearance:none;border:1px solid rgba(145,179,200,.14);border-radius:8px;background:rgba(255,255,255,.018);padding:10px 14px;color:var(--muted);font:500 10px 'DM Sans',sans-serif;letter-spacing:.015em;cursor:pointer;transition:background .22s ease,border-color .22s ease,color .22s ease}
+.simulator-mode-option:hover{border-color:rgba(145,179,200,.38);color:#d6e2e9}
+.simulator-mode-option.is-active{border-color:rgba(145,179,200,.42);background:rgba(91,132,157,.12);color:#b5cedd}
+.profession-context-grid[hidden]{display:none!important}
+.profession-context-grid{margin-top:12px}
+@media(max-width:560px){.simulator-mode-options{display:grid;grid-template-columns:1fr 1fr}.simulator-mode-option{padding:11px 9px}}
