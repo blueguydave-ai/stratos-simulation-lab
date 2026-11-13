@@ -128,10 +128,18 @@ module.exports = async function handler(req, res) {
         });
         const result = await upstream.json();
         if (!upstream.ok) throw new Error(result?.error?.message || ("Gemini returned HTTP " + upstream.status));
-        output = result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
-        grounding = result?.candidates?.[0]?.groundingMetadata || {};
+        const candidate = result?.candidates?.[0];
+        output = candidate?.content?.parts?.map(part => part.text || "").join("").trim() || "";
+        grounding = candidate?.groundingMetadata || {};
         if (!output) throw new Error("Gemini returned an empty response.");
-        providerAttempts.push({ provider: "Gemini", ms: Date.now() - providerStartedAt, ok: true });
+        providerAttempts.push({
+          provider: "Gemini",
+          ms: Date.now() - providerStartedAt,
+          ok: true,
+          finish_reason: candidate?.finishReason || null,
+          output_chars: output.length,
+          usage: result?.usageMetadata || null
+        });
       } catch (error) {
         geminiError = error?.message || "Gemini request failed.";
         providerAttempts.push({ provider: "Gemini", ms: Date.now() - providerStartedAt, ok: false, error: geminiError });
