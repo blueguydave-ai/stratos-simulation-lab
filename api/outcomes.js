@@ -147,7 +147,7 @@ module.exports = async function handler(req, res) {
       if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("No JSON object in outcome response.");
       const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
       if (!Array.isArray(parsed.outcomes)) throw new Error("The response did not contain an outcomes array.");
-      if (action === "initial" && parsed.outcomes.length < 5) throw new Error("The response contained too few distinct outcomes.");
+      if (action === "initial" && parsed.outcomes.length < 3) throw new Error("The response contained fewer than 3 usable outcomes.");
       return parsed;
     };
 
