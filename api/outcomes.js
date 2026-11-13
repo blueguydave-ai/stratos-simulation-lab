@@ -109,28 +109,30 @@ module.exports = async function handler(req, res) {
     let providerUsed = "Gemini";
     let geminiError = "";
 
-    if (apiKey) try {
+    if (apiKey) {
       const providerStartedAt = Date.now();
-      const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: instructions }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          tools: groundedMode ? [{ google_search: {} }] : undefined,
-          generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 7000 }
-        })
-      });
-      const result = await upstream.json();
-      if (!upstream.ok) throw new Error(result?.error?.message || ("Gemini returned HTTP " + upstream.status));
-      output = result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
-      grounding = result?.candidates?.[0]?.groundingMetadata || {};
-      if (!output) throw new Error("Gemini returned an empty response.");
-      providerAttempts.push({ provider: "Gemini", ms: Date.now() - providerStartedAt, ok: true });
-    } catch (error) {
-      geminiError = error?.message || "Gemini request failed.";
-      providerAttempts.push({ provider: "Gemini", ms: Date.now() - providerStartedAt, ok: false, error: geminiError });
+      try {
+        const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: instructions }] },
+            contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+            tools: groundedMode ? [{ google_search: {} }] : undefined,
+            generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 7000 }
+          })
+        });
+        const result = await upstream.json();
+        if (!upstream.ok) throw new Error(result?.error?.message || ("Gemini returned HTTP " + upstream.status));
+        output = result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
+        grounding = result?.candidates?.[0]?.groundingMetadata || {};
+        if (!output) throw new Error("Gemini returned an empty response.");
+        providerAttempts.push({ provider: "Gemini", ms: Date.now() - providerStartedAt, ok: true });
+      } catch (error) {
+        geminiError = error?.message || "Gemini request failed.";
+        providerAttempts.push({ provider: "Gemini", ms: Date.now() - providerStartedAt, ok: false, error: geminiError });
+      }
     } else {
       geminiError = "GEMINI_API_KEY is not configured.";
     }
@@ -177,8 +179,8 @@ module.exports = async function handler(req, res) {
           const response = await fetch("https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID) + "/ai/run/" + encodeURI(model), {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.CLOUDFLARE_API_TOKEN, "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(35000),
-            body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 8000 })
+            signal: AbortSignal.timeout(10000),
+            body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
           if (!response.ok || data?.success === false) throw new Error(data?.errors?.[0]?.message || ("Cloudflare returned HTTP " + response.status));
