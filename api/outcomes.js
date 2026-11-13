@@ -163,7 +163,7 @@ module.exports = async function handler(req, res) {
         name: "Cloudflare Workers AI",
         run: async () => {
           const model = process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-          const response = await fetch("https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID) + "/ai/run/" + encodeURIComponent(model), {
+          const response = await fetch("https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID) + "/ai/run/" + encodeURI(model), {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.CLOUDFLARE_API_TOKEN, "Content-Type": "application/json" },
             signal: AbortSignal.timeout(25000),
