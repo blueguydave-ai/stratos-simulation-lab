@@ -9,7 +9,12 @@ let simulatorMode="strategic";
 let expanding=false;
 
 
+let lastFeedbackDiagnostics = null;
+let lastFeedbackModule = "scenario";
+
 function setFeedbackPending(label) {
+  lastFeedbackModule = label === "Research Expert" ? "research" : "scenario";
+  lastFeedbackDiagnostics = null;
   const status = document.getElementById("feedback-system-status");
   const detail = document.getElementById("feedback-system-detail");
   const lastRun = document.getElementById("feedback-last-run");
@@ -28,6 +33,8 @@ function setFeedbackPending(label) {
 }
 
 function updateFeedbackMonitor(diagnostics, label = "Scenario analysis") {
+  lastFeedbackModule = label === "Research Expert" ? "research" : "scenario";
+  lastFeedbackDiagnostics = diagnostics || null;
   const status = document.getElementById("feedback-system-status");
   const detail = document.getElementById("feedback-system-detail");
   const lastRun = document.getElementById("feedback-last-run");
@@ -86,11 +93,12 @@ if (feedbackForm) feedbackForm.addEventListener("submit", async event => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        module: document.getElementById("research-module")?.hidden ? "scenario" : "research",
+        module: lastFeedbackModule,
         mode: typeof simulatorMode === "string" ? simulatorMode : "research",
         rating,
         issue: document.getElementById("feedback-issue").value,
-        comment: document.getElementById("feedback-comment").value.trim()
+        comment: document.getElementById("feedback-comment").value.trim(),
+        diagnostics: lastFeedbackDiagnostics
       })
     });
     const payload = await response.json().catch(() => ({}));
