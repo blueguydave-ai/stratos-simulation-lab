@@ -166,20 +166,6 @@ module.exports = async function handler(req, res) {
     // Professional Mode receives an explicit grounding warning when a fallback is used.
     if (!analysis) {
       const providers = [];
-      if (process.env.OPENROUTER_API_KEY) providers.push({
-        name: "OpenRouter",
-        run: async () => {
-          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "X-Title": "STRATOS" },
-            signal: AbortSignal.timeout(40000),
-            body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data?.error?.message || ("OpenRouter returned HTTP " + response.status));
-          return data?.choices?.[0]?.message?.content || "";
-        }
-      });
       if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) providers.push({
         name: "Cloudflare Workers AI",
         run: async () => {
@@ -193,6 +179,20 @@ module.exports = async function handler(req, res) {
           const data = await response.json();
           if (!response.ok || data?.success === false) throw new Error(data?.errors?.[0]?.message || ("Cloudflare returned HTTP " + response.status));
           return data?.result?.response || "";
+        }
+      });
+      if (process.env.OPENROUTER_API_KEY) providers.push({
+        name: "OpenRouter",
+        run: async () => {
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "X-Title": "STRATOS" },
+            signal: AbortSignal.timeout(40000),
+            body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data?.error?.message || ("OpenRouter returned HTTP " + response.status));
+          return data?.choices?.[0]?.message?.content || "";
         }
       });
 
