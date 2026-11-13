@@ -104,6 +104,13 @@ module.exports = async function handler(req, res) {
 
   const requestStartedAt = Date.now();
   const providerAttempts = [];
+  // Keep total provider work safely below Vercel's 120-second function limit.
+  const executionBudgetMs = 108000;
+  const providerTimeout = maxMs => {
+    const remaining = executionBudgetMs - (Date.now() - requestStartedAt) - 5000;
+    if (remaining < 1000) throw new Error("STRATOS reached its safe execution time budget.");
+    return Math.min(maxMs, remaining);
+  };
   try {
     const userPrompt = "Analyse this situation within the selected scope and return the required JSON:\n\n" + scenario;
     const groundedMode = professionalMode || Boolean(profession) || Boolean(country);
@@ -118,7 +125,7 @@ module.exports = async function handler(req, res) {
         const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          signal: AbortSignal.timeout(60000),
+          signal: AbortSignal.timeout(providerTimeout(60000)),
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: instructions }] },
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
@@ -181,7 +188,7 @@ module.exports = async function handler(req, res) {
           const response = await fetch("https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID) + "/ai/run/" + encodeURI(model), {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.CLOUDFLARE_API_TOKEN, "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(30000),
+            signal: AbortSignal.timeout(providerTimeout(30000)),
             body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
@@ -195,7 +202,7 @@ module.exports = async function handler(req, res) {
           const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "X-Title": "STRATOS" },
-            signal: AbortSignal.timeout(40000),
+            signal: AbortSignal.timeout(providerTimeout(40000)),
             body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
