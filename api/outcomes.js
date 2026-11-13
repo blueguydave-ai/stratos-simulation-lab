@@ -172,7 +172,7 @@ module.exports = async function handler(req, res) {
           const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "X-Title": "STRATOS" },
-            signal: AbortSignal.timeout(18000),
+            signal: AbortSignal.timeout(30000),
             body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
@@ -187,7 +187,7 @@ module.exports = async function handler(req, res) {
           const response = await fetch("https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID) + "/ai/run/" + encodeURI(model), {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.CLOUDFLARE_API_TOKEN, "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(18000),
+            signal: AbortSignal.timeout(30000),
             body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
