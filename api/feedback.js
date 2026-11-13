@@ -9,6 +9,18 @@ module.exports = async function handler(req, res) {
   const comment = typeof req.body?.comment === "string" ? req.body.comment.trim().slice(0, 1500) : "";
   const moduleName = req.body?.module === "research" ? "research" : "scenario";
   const mode = typeof req.body?.mode === "string" ? req.body.mode.slice(0, 40) : "unknown";
+  const rawDiagnostics = req.body?.diagnostics && typeof req.body.diagnostics === "object" ? req.body.diagnostics : null;
+  const diagnostics = rawDiagnostics ? {
+    status: rawDiagnostics.status === "success" ? "success" : rawDiagnostics.status === "failed" ? "failed" : "unknown",
+    provider: typeof rawDiagnostics.provider === "string" ? rawDiagnostics.provider.slice(0, 60) : null,
+    total_ms: Number.isFinite(rawDiagnostics.total_ms) ? rawDiagnostics.total_ms : null,
+    attempts: Array.isArray(rawDiagnostics.attempts) ? rawDiagnostics.attempts.slice(0, 3).map(item => ({
+      provider: typeof item?.provider === "string" ? item.provider.slice(0, 60) : "unknown",
+      ok: item?.ok === true,
+      ms: Number.isFinite(item?.ms) ? item.ms : null,
+      error: typeof item?.error === "string" ? item.error.slice(0, 220) : undefined
+    })) : []
+  } : null;
   const allowedRatings = new Set(["useful", "partly-useful", "not-useful", "failed"]);
   const allowedIssues = new Set(["none", "accuracy", "missing", "generic", "format", "speed", "other"]);
 
@@ -22,6 +34,7 @@ module.exports = async function handler(req, res) {
     mode,
     rating,
     issue: allowedIssues.has(issue) ? issue : "other",
+    diagnostics,
     comment,
     received_at: new Date().toISOString()
   };
