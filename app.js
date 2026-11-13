@@ -94,7 +94,7 @@ if (feedbackForm) feedbackForm.addEventListener("submit", async event => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         module: lastFeedbackModule,
-        mode: typeof simulatorMode === "string" ? simulatorMode : "research",
+        mode: lastFeedbackModule === "research" ? "research" : (typeof simulatorMode === "string" ? simulatorMode : "strategic"),
         rating,
         issue: document.getElementById("feedback-issue").value,
         comment: document.getElementById("feedback-comment").value.trim(),
