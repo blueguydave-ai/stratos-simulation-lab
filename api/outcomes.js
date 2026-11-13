@@ -3,7 +3,7 @@ const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Use POST to run an outcome analysis." }); }
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: "The AI connection is not configured yet. Add GEMINI_API_KEY to the deployment's environment variables, then redeploy." });
+  if (!apiKey) return res.status(503).json({ error: "STRATOS is temporarily unavailable. Please try again shortly." });
 
   const scenario = typeof req.body?.scenario === "string" ? req.body.scenario.trim() : "";
   const scope = req.body?.scope === "expanded" ? "expanded" : "focused";
@@ -193,11 +193,12 @@ module.exports = async function handler(req, res) {
         }
       }
       if (!analysis) {
-        const reason = [geminiError, ...fallbackErrors].filter(Boolean).join(" | ");
-        return res.status(503).json({ error: "STRATOS could not get a valid response from its available free AI providers. " + (reason || "Check provider availability and API configuration.") });
+        console.error("[STRATOS] All Strategic Mode providers failed.", { gemini: geminiError || "not attempted", fallbacks: fallbackErrors });
+        return res.status(503).json({ error: "STRATOS couldn’t complete this analysis. The AI services are taking longer than expected. Your scenario is still here—please try again." });
       }
     } else if (!analysis) {
-      return res.status(503).json({ error: "Gemini is temporarily unavailable. Professional Mode requires grounded research, so STRATOS has not substituted an ungrounded model. Please retry shortly." });
+      console.error("[STRATOS] Grounded Professional Mode provider failed.", { error: geminiError || "No valid response" });
+      return res.status(503).json({ error: "STRATOS couldn’t complete this professional analysis right now. Your scenario is still here—please try again shortly." });
     }
 
     analysis.outcomes = analysis.outcomes.slice(0, action === "expand" ? 7 : 12).map((item, index) => ({ ...item, rank: index + 1 }));
@@ -211,6 +212,7 @@ module.exports = async function handler(req, res) {
     }
     return res.status(200).json({ analysis, sources, provider: providerUsed });
   } catch (error) {
-    return res.status(500).json({ error: "Unable to reach the AI service or parse its response. Please try again." });
+    console.error("[STRATOS] Unexpected analysis error:", error?.message || error);
+    return res.status(500).json({ error: "Something interrupted the analysis. Your scenario is still here—please try again." });
   }
 };
