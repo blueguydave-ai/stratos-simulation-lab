@@ -96,7 +96,7 @@ module.exports = async function handler(req, res) {
       key_drivers:["..."],
       outcomes:[{rank:1,title:"distinct outcome",category:"dominant driver",likelihood:"Higher|Moderate|Lower",description:"what happens",causal_chain:"cause to effect chain",conditions:["..."],drivers:["..."],early_signs:["..."],changing_conditions:["..."],counter_moves:[{move:"Plausible challenge, objection, reaction or failure mode",response:"Practical response or preparation",evidence_needed:"Information or evidence needed",watch_for:"Signal that this branch is developing"}],blind_spot:"..."}],
       blind_spots:[{title:"...",why_it_matters:"..."}],
-      professional_context:{profession:"selected or inferred profession",country:"selected country or jurisdiction",workflow_nuances:["..."],local_practice_and_rules:["..."],role_dynamics:["..."],professional_risks:["..."],verification_gaps:["..."]},
+      ...(professionalMode ? {professional_context:{profession:"selected or inferred profession",country:"selected country or jurisdiction",workflow_nuances:["..."],local_practice_and_rules:["..."],role_dynamics:["..."],professional_risks:["..."],verification_gaps:["..."]}} : {}),
       caveat:"how to interpret and test these scenarios"
     }),
     "For expansion, outcomes may be empty only if no additional distinct outcomes can responsibly be identified. Do not put markdown fences or commentary outside the JSON."
