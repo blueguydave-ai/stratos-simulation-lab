@@ -118,7 +118,7 @@ module.exports = async function handler(req, res) {
         const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          signal: AbortSignal.timeout(40000),
+          signal: AbortSignal.timeout(60000),
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: instructions }] },
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
