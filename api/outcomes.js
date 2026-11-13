@@ -96,40 +96,115 @@ module.exports = async function handler(req, res) {
   ].join("\n\n");
 
   try {
-    const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: instructions }] },
-        contents: [{ role: "user", parts: [{ text: "Analyse this situation within the selected scope and return the required JSON:\n\n" + scenario }] }],
-        tools: professionalMode || profession || country ? [{ google_search: {} }] : undefined,
-        // Gemini does not support application/json response MIME type together with Google Search tools.
-        // Keep JSON-only instructions in the prompt when grounding is enabled; use constrained JSON mode otherwise.
-        generationConfig: { ...(professionalMode || profession || country ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
-      })
-    });
-    const result = await upstream.json();
-    if (!upstream.ok) return res.status(upstream.status === 429 ? 429 : 502).json({ error: result?.error?.message || "The AI provider rejected the request." });
-    const output = result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim();
-    if (!output) return res.status(502).json({ error: "The AI model returned an empty analysis. Please try again." });
-    const cleaned = output.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-    const firstBrace = cleaned.indexOf("{");
-    const lastBrace = cleaned.lastIndexOf("}");
-    if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("No JSON object in outcome response.");
-    const analysis = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-    if (!Array.isArray(analysis.outcomes)) return res.status(502).json({ error: "The analysis returned an unexpected outcome format." });
-    if (action === "initial" && analysis.outcomes.length < 5) return res.status(502).json({ error: "The analysis returned too few distinct outcomes. Please run it again." });
+    const userPrompt = "Analyse this situation within the selected scope and return the required JSON:\n\n" + scenario;
+    const groundedMode = professionalMode || Boolean(profession) || Boolean(country);
+    let output = "";
+    let grounding = {};
+    let providerUsed = "Gemini";
+    let geminiError = "";
+
+    try {
+      const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        signal: AbortSignal.timeout(18000),
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: instructions }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          tools: groundedMode ? [{ google_search: {} }] : undefined,
+          generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
+        })
+      });
+      const result = await upstream.json();
+      if (!upstream.ok) throw new Error(result?.error?.message || ("Gemini returned HTTP " + upstream.status));
+      output = result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
+      grounding = result?.candidates?.[0]?.groundingMetadata || {};
+      if (!output) throw new Error("Gemini returned an empty response.");
+    } catch (error) {
+      geminiError = error?.message || "Gemini request failed.";
+    }
+
+    const parseAnalysis = raw => {
+      const cleaned = String(raw || "").replace(/^\\s*\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`\\s*$/, "");
+      const firstBrace = cleaned.indexOf("{");
+      const lastBrace = cleaned.lastIndexOf("}");
+      if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("No JSON object in outcome response.");
+      const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+      if (!Array.isArray(parsed.outcomes)) throw new Error("The response did not contain an outcomes array.");
+      if (action === "initial" && parsed.outcomes.length < 5) throw new Error("The response contained too few distinct outcomes.");
+      return parsed;
+    };
+
+    let analysis = null;
+    if (output) {
+      try { analysis = parseAnalysis(output); }
+      catch (error) { geminiError = error?.message || "Gemini returned invalid JSON."; }
+    }
+
+    // Only general Strategic Mode may use ungrounded fallback models. Professional Mode
+    // relies on Gemini Search grounding until STRATOS has an independent retrieval layer.
+    if (!analysis && !groundedMode) {
+      const providers = [];
+      if (process.env.OPENROUTER_API_KEY) providers.push({
+        name: "OpenRouter",
+        run: async () => {
+          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://stratossimulator.netlify.app", "X-Title": "STRATOS" },
+            signal: AbortSignal.timeout(25000),
+            body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 12000 })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data?.error?.message || ("OpenRouter returned HTTP " + response.status));
+          return data?.choices?.[0]?.message?.content || "";
+        }
+      });
+      if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) providers.push({
+        name: "Cloudflare Workers AI",
+        run: async () => {
+          const model = process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+          const response = await fetch("https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID) + "/ai/run/" + encodeURIComponent(model), {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + process.env.CLOUDFLARE_API_TOKEN, "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(25000),
+            body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 12000 })
+          });
+          const data = await response.json();
+          if (!response.ok || data?.success === false) throw new Error(data?.errors?.[0]?.message || ("Cloudflare returned HTTP " + response.status));
+          return data?.result?.response || "";
+        }
+      });
+
+      const fallbackErrors = [];
+      for (const provider of providers) {
+        try {
+          const candidate = await provider.run();
+          const parsed = parseAnalysis(candidate);
+          analysis = parsed;
+          providerUsed = provider.name;
+          break;
+        } catch (error) {
+          fallbackErrors.push(provider.name + ": " + (error?.message || "request failed"));
+        }
+      }
+      if (!analysis) {
+        const reason = [geminiError, ...fallbackErrors].filter(Boolean).join(" | ");
+        return res.status(503).json({ error: "STRATOS could not get a valid response from its available free AI providers. " + (reason || "Check provider availability and API configuration.") });
+      }
+    } else if (!analysis) {
+      return res.status(503).json({ error: "Gemini is temporarily unavailable. Professional Mode requires grounded research, so STRATOS has not substituted an ungrounded model. Please retry shortly." });
+    }
+
     analysis.outcomes = analysis.outcomes.slice(0, action === "expand" ? 7 : 12).map((item, index) => ({ ...item, rank: index + 1 }));
-    const grounding = result?.candidates?.[0]?.groundingMetadata || {};
     const sources = (Array.isArray(grounding.groundingChunks) ? grounding.groundingChunks : [])
-      .filter(chunk => typeof chunk?.web?.uri === "string" && /^https?:\/\//i.test(chunk.web.uri))
+      .filter(chunk => typeof chunk?.web?.uri === "string" && /^https?:\\/\\//i.test(chunk.web.uri))
       .map(chunk => ({ title: chunk.web.title || chunk.web.uri, url: chunk.web.uri }))
       .filter((source, index, all) => all.findIndex(item => item.url === source.url) === index)
       .slice(0, 12);
     if (analysis.professional_context && typeof analysis.professional_context === "object") {
       analysis.professional_context.source_links = sources;
     }
-    return res.status(200).json({ analysis, sources });
+    return res.status(200).json({ analysis, sources, provider: providerUsed });
   } catch (error) {
     return res.status(500).json({ error: "Unable to reach the AI service or parse its response. Please try again." });
   }
