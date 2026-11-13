@@ -125,7 +125,7 @@ module.exports = async function handler(req, res) {
     }
 
     const parseAnalysis = raw => {
-      const cleaned = String(raw || "").replace(/^\\s*\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`\\s*$/, "");
+      const cleaned = String(raw || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```\s*$/, "");
       const firstBrace = cleaned.indexOf("{");
       const lastBrace = cleaned.lastIndexOf("}");
       if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("No JSON object in outcome response.");
