@@ -1,4 +1,9 @@
 {
   "version": 2,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "functions": {
+    "api/outcomes.js": {
+      "maxDuration": 120
+    }
+  }
 }
