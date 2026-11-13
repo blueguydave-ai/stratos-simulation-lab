@@ -47,14 +47,17 @@ module.exports = async function handler(req, res) {
     professionalMode
       ? "PROFESSIONAL MODE OUTPUT STANDARD: Serve the working professional, not a casual explorer. Lead with the decision-relevant point. Use the terminology practitioners actually use in this field, but explain uncommon terms briefly. Keep each point short, specific and actionable. Prioritize the few material issues; do not flood the user with every conceivable detail. Put supporting analysis, source references and technical depth behind clearly separated details. Identify the relevant specialty and real workflow; do not assume all people in a broad profession work alike."
       : "STRATEGIC MODE OUTPUT STANDARD: Remain profession-neutral unless the scenario itself requires a specialist role. Explore causal dynamics, actors, incentives, counter-moves, vulnerabilities, strategic options and second-order effects in clear language. Do not turn a general strategy question into professional advice.",
-    "PROFESSIONAL AND COUNTRY CONTEXT:",
-    profession ? ("PROFESSION: " + profession) : "PROFESSION: Infer relevant roles only when supported by the scenario; otherwise keep the analysis cross-functional.",
-    country ? ("COUNTRY / JURISDICTION: " + country) : "COUNTRY / JURISDICTION: Do not assume a country. Mark local context as unknown when it matters.",
-    "When Professional Mode is active, identify the actual profession or specialty from the selected role and scenario. Model real workflows, decision rights, deliverables, tools, standards, licensing or registration where applicable, client/patient/customer relationships, counterparties, liability, ethics, safety duties, commercial pressures, failure modes and quality controls. Identify the real materials practitioners rely on where relevant: current legislation and regulations, official guidance, professional-body standards, technical codes, clinical guidelines, manuals, protocols, specifications, contracts, accounting/audit standards, research literature, institutional policies and authoritative databases. Select only materials relevant to the actual task and jurisdiction; do not invent titles, clauses, standards or citations. Distinguish binding requirements from guidance, common practice and opinion.",
-    "When a country is supplied, adapt the model to that jurisdiction. Distinguish law/regulation from local custom, institutional practice and employer policy. Consider relevant regulators, licensing bodies, labour rules, tax, procurement, payment infrastructure, professional associations, public/private sector differences, language, infrastructure and economic conditions where material. Never stereotype or assume uniform practice within a country.",
-    "For jurisdiction-specific legal, regulatory, licensing, tax or safety claims, prioritize current official or primary sources. If evidence is unavailable or conflicting, label the point unverified and identify what a local professional should confirm. Never invent statutes, rules, salary data, credentials or local customs.",
-    "Generate multiple distinct outcomes grounded in the selected profession and jurisdiction. Include routine, favourable, adverse, edge-case and second-order pathways where relevant. Model interactions among professionals, clients, managers, regulators, suppliers, institutions and the public. Account for limited information, competing incentives, workload, resource scarcity and local constraints.",
-    "If profession or country is not supplied, do not fabricate a profile. Treat missing context as an uncertainty.",
+    ...(professionalMode ? [
+      "PROFESSIONAL AND COUNTRY CONTEXT:",
+      profession ? ("PROFESSION: " + profession) : "Infer the relevant specialty only from the selected role and scenario; do not invent a profile.",
+      country ? ("COUNTRY / JURISDICTION: " + country) : "Do not assume a country. Mark local context as unknown when it matters.",
+      "Model the actual specialty, workflow, decision rights, deliverables, tools, standards, licensing, client or patient relationships, counterparties, liability, ethics, safety duties, commercial pressures, failure modes and quality controls. Identify only materials relevant to the task and jurisdiction: legislation, official guidance, professional-body standards, technical codes, clinical guidelines, manuals, protocols, specifications, contracts, accounting or audit standards, research and institutional policies. Never invent titles, clauses, standards or citations. Distinguish binding requirements from guidance, common practice and opinion.",
+      "Adapt to the supplied jurisdiction. Consider relevant regulators, licensing bodies, labour rules, tax, procurement, payment infrastructure, professional associations, public/private sector differences, language, infrastructure and economic conditions only where material. Do not stereotype or assume uniform practice.",
+      "For jurisdiction-specific legal, regulatory, licensing, tax or safety claims, prioritize current official or primary sources. If evidence is unavailable or conflicting, label it unverified and identify what a local professional should confirm. Never invent statutes, rules, salary data, credentials or local customs.",
+      "Generate distinct outcomes grounded in the profession and jurisdiction. Model interactions among professionals, clients, managers, regulators, suppliers, institutions and the public, accounting for limited information, competing incentives, workload, resource scarcity and local constraints."
+    ] : [
+      "CONTEXT: Keep Strategic Mode profession-neutral unless the scenario itself requires specialist roles. Do not add professional or jurisdiction-specific assumptions that the scenario does not support."
+    ]),
     "ANALYSIS METHOD:",
     "1. Separate facts explicitly stated by the user from inferences and unknowns. Never silently promote an assumption into a fact.",
     "2. Discover potentially relevant components within the selected scope: actors, groups, incentives, information gaps, influential variables, constants, constraints, resources, processes, dependencies, relationships, institutions, tools, infrastructure, feedback loops, bottlenecks and external forces. Include only components that can plausibly affect this situation.",
@@ -115,7 +118,7 @@ module.exports = async function handler(req, res) {
         const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(20000),
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: instructions }] },
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
@@ -151,11 +154,16 @@ module.exports = async function handler(req, res) {
     let analysis = null;
     if (output) {
       try { analysis = parseAnalysis(output); }
-      catch (error) { geminiError = error?.message || "Gemini returned invalid JSON."; }
+      catch (error) {
+        geminiError = error?.message || "Gemini returned invalid JSON.";
+        grounding = {};
+        const lastAttempt = providerAttempts[providerAttempts.length - 1];
+        if (lastAttempt?.provider === "Gemini") { lastAttempt.ok = false; lastAttempt.error = geminiError; }
+      }
     }
 
-    // Only general Strategic Mode may use ungrounded fallback models. Professional Mode
-    // relies on Gemini Search grounding until STRATOS has an independent retrieval layer.
+    // Gemini is always attempted first. If it fails, fall back sequentially in every mode.
+    // Professional Mode receives an explicit grounding warning when a fallback is used.
     if (!analysis) {
       const providers = [];
       if (process.env.OPENROUTER_API_KEY) providers.push({
@@ -164,7 +172,7 @@ module.exports = async function handler(req, res) {
           const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "X-Title": "STRATOS" },
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(18000),
             body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
