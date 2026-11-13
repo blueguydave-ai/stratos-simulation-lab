@@ -7,6 +7,86 @@ let currentAnalysis=null;
 let currentScope="focused";
 let simulatorMode="strategic";
 let expanding=false;
+
+function updateFeedbackMonitor(diagnostics, label = "Scenario analysis") {
+  const status = document.getElementById("feedback-system-status");
+  const detail = document.getElementById("feedback-system-detail");
+  const lastRun = document.getElementById("feedback-last-run");
+  const list = document.getElementById("feedback-provider-list");
+  if (!status || !detail || !lastRun || !list) return;
+  const now = new Date().toLocaleTimeString();
+  lastRun.textContent = label + " · " + now;
+  if (!diagnostics) {
+    status.textContent = "Request finished without diagnostic details";
+    detail.textContent = "The server did not return provider diagnostics. Check the Vercel function logs for the underlying error.";
+    list.replaceChildren();
+    ["Gemini", "Cloudflare Workers AI", "OpenRouter"].forEach(name => {
+      const chip = document.createElement("span");
+      chip.className = "feedback-provider pending";
+      chip.textContent = name + " · status unknown";
+      list.append(chip);
+    });
+    return;
+  }
+  const attempts = Array.isArray(diagnostics.attempts) ? diagnostics.attempts : [];
+  const successful = diagnostics.status === "success";
+  status.textContent = successful
+    ? "Completed · " + (diagnostics.provider || "AI provider")
+    : "Failed · " + (diagnostics.provider || "all attempted providers");
+  const seconds = Number.isFinite(diagnostics.total_ms) ? (diagnostics.total_ms / 1000).toFixed(1) + "s" : "time unavailable";
+  detail.textContent = label + " took " + seconds + ". " +
+    (successful ? (diagnostics.grounded ? "Gemini search grounding returned source links." : "No verified search-grounding links were returned.") :
+      (diagnostics.error || "No provider returned a usable result. Review the provider attempts below."));
+  list.replaceChildren();
+  const names = ["Gemini", "Cloudflare Workers AI", "OpenRouter"];
+  names.forEach(name => {
+    const attempt = attempts.find(item => item.provider === name);
+    const chip = document.createElement("span");
+    const activeProvider = diagnostics.provider === name && successful;
+    const knownResearchProvider = label === "Research Expert" && name === "Gemini" && successful;
+    chip.className = "feedback-provider " + (attempt ? (attempt.ok ? "success" : "failed") : (activeProvider || knownResearchProvider ? "success" : "pending"));
+    if (attempt) chip.textContent = name + " · " + (attempt.ok ? "success" : "failed") + " · " + (attempt.ms ? (attempt.ms / 1000).toFixed(1) + "s" : "—");
+    else if (activeProvider || knownResearchProvider) chip.textContent = name + " · success";
+    else chip.textContent = name + " · " + (diagnostics.status === "failed" ? "not reached" : "not used");
+    list.append(chip);
+  });
+  if (diagnostics.error) detail.textContent += " Error: " + diagnostics.error;
+}
+
+const feedbackForm = document.getElementById("quality-feedback-form");
+if (feedbackForm) feedbackForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = feedbackForm.querySelector("button[type='submit']");
+  const message = document.getElementById("feedback-submit-status");
+  const rating = document.getElementById("feedback-rating").value;
+  if (!rating) { message.textContent = "Choose an overall quality rating first."; return; }
+  button.disabled = true;
+  message.textContent = "Sending feedback...";
+  try {
+    const response = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        module: document.getElementById("research-module")?.hidden ? "scenario" : "research",
+        mode: typeof simulatorMode === "string" ? simulatorMode : "research",
+        rating,
+        issue: document.getElementById("feedback-issue").value,
+        comment: document.getElementById("feedback-comment").value.trim()
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Feedback could not be sent.");
+    message.textContent = payload.message || "Thank you. Feedback received.";
+    document.getElementById("feedback-comment").value = "";
+    document.getElementById("feedback-rating").value = "";
+    document.getElementById("feedback-issue").value = "none";
+  } catch (error) {
+    message.textContent = error.message || "Feedback could not be sent. Please try again.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
 const strategicModeButton=document.getElementById("strategic-mode");
 const professionModeButton=document.getElementById("profession-mode");
 const professionContextFields=document.getElementById("profession-context-fields");
@@ -39,8 +119,8 @@ let section=resultsBox.querySelector(".outcome-section");if(!section){section=ma
 const list=section.querySelector(".outcome-list");renderOutcomes(data.outcomes||[],list);metrics.querySelector(".metric strong").textContent=String(list.children.length);
 if(!section.querySelector(".more-row")){const row=make("div","more-row");const button=make("button","more-button","Explore more possible outcomes");button.type="button";button.addEventListener("click",expandOutcomes);row.append(button);section.append(row);}
 if(!append)resultsBox.append(make("p","disclaimer",data.caveat||"Likelihood labels are comparative judgments, not measured probabilities. These are scenarios to test, not guarantees."));}
-async function expandOutcomes(){if(!currentAnalysis||expanding)return;expanding=true;const button=resultsBox.querySelector(".more-button");button.disabled=true;button.textContent="Exploring additional possibilities...";showStatus("Searching for additional distinct outcomes within the same context boundary...");try{const response=await fetch("/api/outcomes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenario:scenarioInput.value.trim(),scope:currentScope,action:"expand",existing_outcomes:currentAnalysis.outcomes.map(item=>item.title),profession:simulatorMode==="profession"?(document.getElementById("scenario-profession")?.value||""):"",country:simulatorMode==="profession"?(document.getElementById("scenario-country")?.value.trim()||""):"",professional_mode:simulatorMode==="profession"})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"Could not expand the outcome set.");const extra=payload.analysis;const seen=new Set(currentAnalysis.outcomes.map(item=>String(item.title||"").toLowerCase()));const fresh=(extra.outcomes||[]).filter(item=>!seen.has(String(item.title||"").toLowerCase()));if(!fresh.length)throw new Error("No meaningfully distinct additional outcomes were found at this scope. Try a new analysis with the expanded-context mode to widen the lens.");fresh.forEach((item,i)=>item.rank=currentAnalysis.outcomes.length+i+1);currentAnalysis.outcomes.push(...fresh);render({...currentAnalysis,outcomes:fresh},true);statusBox.hidden=true;button.textContent="Explore more possible outcomes";}catch(error){showStatus(error.message||"Unable to expand outcomes.",true);button.textContent="Try exploring more outcomes";}finally{expanding=false;button.disabled=false;}}
-runButton.addEventListener("click",async()=>{const scenario=scenarioInput.value.trim();if(scenario.length<20){showStatus("Describe the situation in a little more detail so STRATOS has enough context to analyse it.",true);scenarioInput.focus();return;}runButton.disabled=true;runButton.querySelector("span:first-child").textContent="Exploring...";resultsBox.hidden=true;resultsBox.replaceChildren();currentAnalysis=null;showStatus(currentScope==="expanded"?"Widening the lens carefully to find relevant surrounding influences...":"Mapping the immediate situation and its plausible outcomes...");try{const response=await fetch("/api/outcomes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenario,scope:currentScope,action:"initial",profession:simulatorMode==="profession"?(document.getElementById("scenario-profession")?.value||""):"",country:simulatorMode==="profession"?(document.getElementById("scenario-country")?.value.trim()||""):"",professional_mode:simulatorMode==="profession"})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"STRATOS could not complete the analysis. Please try again.");if(!payload.analysis||!Array.isArray(payload.analysis.outcomes)||payload.analysis.outcomes.length<3)throw new Error("The analysis came back incomplete. Please run it again.");currentAnalysis=payload.analysis;if(currentAnalysis.professional_context)currentAnalysis.professional_context.source_links=payload.sources||[];render(currentAnalysis);statusBox.hidden=true;resultsBox.hidden=false;resultsBox.scrollIntoView({behavior:"smooth",block:"start"});}catch(error){showStatus(error.message||"Something went wrong. Please try again.",true);}finally{runButton.disabled=false;runButton.querySelector("span:first-child").textContent="Explore outcomes";}});
+async function expandOutcomes(){if(!currentAnalysis||expanding)return;expanding=true;const button=resultsBox.querySelector(".more-button");button.disabled=true;button.textContent="Exploring additional possibilities...";showStatus("Searching for additional distinct outcomes within the same context boundary...");try{const response=await fetch("/api/outcomes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenario:scenarioInput.value.trim(),scope:currentScope,action:"expand",existing_outcomes:currentAnalysis.outcomes.map(item=>item.title),profession:simulatorMode==="profession"?(document.getElementById("scenario-profession")?.value||""):"",country:simulatorMode==="profession"?(document.getElementById("scenario-country")?.value.trim()||""):"",professional_mode:simulatorMode==="profession"})});const payload=await response.json().catch(()=>({}));updateFeedbackMonitor(payload.diagnostics,"Scenario expansion");if(!response.ok)throw new Error(payload.error||"Could not expand the outcome set.");const extra=payload.analysis;const seen=new Set(currentAnalysis.outcomes.map(item=>String(item.title||"").toLowerCase()));const fresh=(extra.outcomes||[]).filter(item=>!seen.has(String(item.title||"").toLowerCase()));if(!fresh.length)throw new Error("No meaningfully distinct additional outcomes were found at this scope. Try a new analysis with the expanded-context mode to widen the lens.");fresh.forEach((item,i)=>item.rank=currentAnalysis.outcomes.length+i+1);currentAnalysis.outcomes.push(...fresh);render({...currentAnalysis,outcomes:fresh},true);statusBox.hidden=true;button.textContent="Explore more possible outcomes";}catch(error){showStatus(error.message||"Unable to expand outcomes.",true);button.textContent="Try exploring more outcomes";}finally{expanding=false;button.disabled=false;}}
+runButton.addEventListener("click",async()=>{const scenario=scenarioInput.value.trim();if(scenario.length<20){showStatus("Describe the situation in a little more detail so STRATOS has enough context to analyse it.",true);scenarioInput.focus();return;}runButton.disabled=true;runButton.querySelector("span:first-child").textContent="Exploring...";resultsBox.hidden=true;resultsBox.replaceChildren();currentAnalysis=null;showStatus(currentScope==="expanded"?"Widening the lens carefully to find relevant surrounding influences...":"Mapping the immediate situation and its plausible outcomes...");try{const response=await fetch("/api/outcomes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenario,scope:currentScope,action:"initial",profession:simulatorMode==="profession"?(document.getElementById("scenario-profession")?.value||""):"",country:simulatorMode==="profession"?(document.getElementById("scenario-country")?.value.trim()||""):"",professional_mode:simulatorMode==="profession"})});const payload=await response.json().catch(()=>({}));updateFeedbackMonitor(payload.diagnostics,"Scenario analysis");if(!response.ok)throw new Error(payload.error||"STRATOS could not complete the analysis. Please try again.");if(!payload.analysis||!Array.isArray(payload.analysis.outcomes)||payload.analysis.outcomes.length<3)throw new Error("The analysis came back incomplete. Please run it again.");currentAnalysis=payload.analysis;if(currentAnalysis.professional_context)currentAnalysis.professional_context.source_links=payload.sources||[];render(currentAnalysis);statusBox.hidden=true;resultsBox.hidden=false;resultsBox.scrollIntoView({behavior:"smooth",block:"start"});}catch(error){showStatus(error.message||"Something went wrong. Please try again.",true);}finally{runButton.disabled=false;runButton.querySelector("span:first-child").textContent="Explore outcomes";}});
 
 
 
@@ -449,6 +529,7 @@ researchButton.addEventListener("click", async () => {
       })
     });
     const payload = await response.json().catch(() => ({}));
+    updateFeedbackMonitor(payload.diagnostics, "Research Expert");
     if (!response.ok) throw new Error(payload.error || "The research investigation could not be completed.");
     if (!payload.report || typeof payload.report !== "object") throw new Error("The research service returned an incomplete report.");
     renderResearchReport(payload);
