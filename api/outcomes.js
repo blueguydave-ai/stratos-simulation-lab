@@ -3,7 +3,6 @@ const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Use POST to run an outcome analysis." }); }
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: "STRATOS is temporarily unavailable. Please try again shortly." });
 
   const scenario = typeof req.body?.scenario === "string" ? req.body.scenario.trim() : "";
   const scope = req.body?.scope === "expanded" ? "expanded" : "focused";
@@ -96,10 +95,12 @@ module.exports = async function handler(req, res) {
       blind_spots:[{title:"...",why_it_matters:"..."}],
       professional_context:{profession:"selected or inferred profession",country:"selected country or jurisdiction",workflow_nuances:["..."],local_practice_and_rules:["..."],role_dynamics:["..."],professional_risks:["..."],verification_gaps:["..."]},
       caveat:"how to interpret and test these scenarios"
-    }, null, 2),
+    }),
     "For expansion, outcomes may be empty only if no additional distinct outcomes can responsibly be identified. Do not put markdown fences or commentary outside the JSON."
   ].join("\n\n");
 
+  const requestStartedAt = Date.now();
+  const providerAttempts = [];
   try {
     const userPrompt = "Analyse this situation within the selected scope and return the required JSON:\n\n" + scenario;
     const groundedMode = professionalMode || Boolean(profession) || Boolean(country);
@@ -108,16 +109,17 @@ module.exports = async function handler(req, res) {
     let providerUsed = "Gemini";
     let geminiError = "";
 
-    try {
+    if (apiKey) try {
+      const providerStartedAt = Date.now();
       const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(15000),
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: instructions }] },
           contents: [{ role: "user", parts: [{ text: userPrompt }] }],
           tools: groundedMode ? [{ google_search: {} }] : undefined,
-          generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 12000 }
+          generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 7000 }
         })
       });
       const result = await upstream.json();
@@ -125,8 +127,12 @@ module.exports = async function handler(req, res) {
       output = result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
       grounding = result?.candidates?.[0]?.groundingMetadata || {};
       if (!output) throw new Error("Gemini returned an empty response.");
+      providerAttempts.push({ provider: "Gemini", ms: Date.now() - providerStartedAt, ok: true });
     } catch (error) {
       geminiError = error?.message || "Gemini request failed.";
+      providerAttempts.push({ provider: "Gemini", ms: Date.now() - providerStartedAt, ok: false, error: geminiError });
+    } else {
+      geminiError = "GEMINI_API_KEY is not configured.";
     }
 
     const parseAnalysis = raw => {
@@ -148,16 +154,16 @@ module.exports = async function handler(req, res) {
 
     // Only general Strategic Mode may use ungrounded fallback models. Professional Mode
     // relies on Gemini Search grounding until STRATOS has an independent retrieval layer.
-    if (!analysis && !groundedMode) {
+    if (!analysis) {
       const providers = [];
       if (process.env.OPENROUTER_API_KEY) providers.push({
         name: "OpenRouter",
         run: async () => {
           const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
-            headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://stratossimulator.netlify.app", "X-Title": "STRATOS" },
-            signal: AbortSignal.timeout(35000),
-            body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 8000 })
+            headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "X-Title": "STRATOS" },
+            signal: AbortSignal.timeout(10000),
+            body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data?.error?.message || ("OpenRouter returned HTTP " + response.status));
@@ -182,24 +188,34 @@ module.exports = async function handler(req, res) {
 
       const fallbackErrors = [];
       for (const provider of providers) {
+        const providerStartedAt = Date.now();
         try {
           const candidate = await provider.run();
           const parsed = parseAnalysis(candidate);
           analysis = parsed;
           providerUsed = provider.name;
+          providerAttempts.push({ provider: provider.name, ms: Date.now() - providerStartedAt, ok: true });
           break;
         } catch (error) {
-          fallbackErrors.push(provider.name + ": " + (error?.message || "request failed"));
+          const message = error?.message || "request failed";
+          fallbackErrors.push(provider.name + ": " + message);
+          providerAttempts.push({ provider: provider.name, ms: Date.now() - providerStartedAt, ok: false, error: message });
         }
       }
       if (!analysis) {
-        console.error("[STRATOS] All Strategic Mode providers failed.", { gemini: geminiError || "not attempted", fallbacks: fallbackErrors });
+        console.error("[STRATOS] All providers failed.", { attempts: providerAttempts, gemini: geminiError || "not attempted", fallbacks: fallbackErrors, total_ms: Date.now() - requestStartedAt });
         return res.status(503).json({ error: "STRATOS couldn’t complete this analysis. The AI services are taking longer than expected. Your scenario is still here—please try again." });
       }
-    } else if (!analysis) {
-      console.error("[STRATOS] Grounded Professional Mode provider failed.", { error: geminiError || "No valid response" });
-      return res.status(503).json({ error: "STRATOS couldn’t complete this professional analysis right now. Your scenario is still here—please try again shortly." });
     }
+
+    if (providerUsed !== "Gemini" && groundedMode) {
+      analysis.professional_context = analysis.professional_context && typeof analysis.professional_context === "object" ? analysis.professional_context : {};
+      const gaps = Array.isArray(analysis.professional_context.verification_gaps) ? analysis.professional_context.verification_gaps : [];
+      gaps.unshift("Fallback AI was used without Gemini live Search grounding. Independently verify current laws, regulations, professional standards and local requirements before relying on jurisdiction-specific details.");
+      analysis.professional_context.verification_gaps = [...new Set(gaps)].slice(0, 8);
+      analysis.caveat = [analysis.caveat, "This response was generated by a fallback provider without live Google Search grounding; verify current jurisdiction-specific requirements against authoritative sources."].filter(Boolean).join(" ");
+    }
+    console.info("[STRATOS] Analysis completed.", { provider: providerUsed, attempts: providerAttempts, total_ms: Date.now() - requestStartedAt });
 
     analysis.outcomes = analysis.outcomes.slice(0, action === "expand" ? 7 : 12).map((item, index) => ({ ...item, rank: index + 1 }));
     const sources = (Array.isArray(grounding.groundingChunks) ? grounding.groundingChunks : [])
