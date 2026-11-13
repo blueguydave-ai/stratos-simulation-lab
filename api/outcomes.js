@@ -214,7 +214,7 @@ module.exports = async function handler(req, res) {
       }
       if (!analysis) {
         console.error("[STRATOS] All providers failed.", { attempts: providerAttempts, gemini: geminiError || "not attempted", fallbacks: fallbackErrors, total_ms: Date.now() - requestStartedAt });
-        return res.status(503).json({ error: "STRATOS couldn’t complete this analysis. The AI services are taking longer than expected. Your scenario is still here—please try again." });
+        return res.status(503).json({ error: "STRATOS couldn't complete this analysis right now. Your scenario is still here. Please try again." });
       }
     }
 
@@ -236,7 +236,7 @@ module.exports = async function handler(req, res) {
     if (analysis.professional_context && typeof analysis.professional_context === "object") {
       analysis.professional_context.source_links = sources;
     }
-    return res.status(200).json({ analysis, sources, provider: providerUsed });
+    return res.status(200).json({ analysis, sources });
   } catch (error) {
     console.error("[STRATOS] Unexpected analysis error:", error?.message || error);
     return res.status(500).json({ error: "Something interrupted the analysis. Your scenario is still here—please try again." });
