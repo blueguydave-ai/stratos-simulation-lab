@@ -228,8 +228,9 @@ module.exports = async function handler(req, res) {
         }
       }
       if (!analysis) {
-        console.error("[STRATOS] All providers failed.", { attempts: providerAttempts, gemini: geminiError || "not attempted", fallbacks: fallbackErrors, total_ms: Date.now() - requestStartedAt });
-        return res.status(503).json({ error: "STRATOS couldn't complete this analysis right now. Your scenario is still here. Please try again." });
+        const totalMs = Date.now() - requestStartedAt;
+        console.error("[STRATOS] All providers failed.", { attempts: providerAttempts, gemini: geminiError || "not attempted", fallbacks: fallbackErrors, total_ms: totalMs });
+        return res.status(503).json({ error: "STRATOS couldn't complete this analysis right now. Your scenario is still here. Please try again.", diagnostics: { status: "failed", provider: null, attempts: providerAttempts.map(item => ({ provider: item.provider, ms: item.ms, ok: item.ok, error: String(item.error || "").slice(0, 220) })), total_ms: totalMs } });
       }
     }
 
@@ -251,7 +252,7 @@ module.exports = async function handler(req, res) {
     if (analysis.professional_context && typeof analysis.professional_context === "object") {
       analysis.professional_context.source_links = sources;
     }
-    return res.status(200).json({ analysis, sources });
+    return res.status(200).json({ analysis, sources, diagnostics: { status: "success", provider: providerUsed, attempts: providerAttempts.map(item => ({ provider: item.provider, ms: item.ms, ok: item.ok, error: item.error ? String(item.error).slice(0, 220) : undefined })), total_ms: Date.now() - requestStartedAt, grounded: providerUsed === "Gemini" && sources.length > 0 } });
   } catch (error) {
     console.error("[STRATOS] Unexpected analysis error:", error?.message || error);
     return res.status(500).json({ error: "Something interrupted the analysis. Your scenario is still here—please try again." });
