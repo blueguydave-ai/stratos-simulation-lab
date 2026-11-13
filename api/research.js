@@ -115,6 +115,7 @@ module.exports = async function handler(req, res) {
     "For each source_urls field, include only URLs you actually consulted. If the research does not support a chart, return charts: []. If the question cannot be answered reliably, state that plainly and prioritize the missing evidence."
   ].join("\n");
 
+  const researchStartedAt = Date.now();
   try {
     const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
       method: "POST",
@@ -172,9 +173,11 @@ module.exports = async function handler(req, res) {
       report,
       sources,
       search_queries: Array.isArray(grounding.webSearchQueries) ? grounding.webSearchQueries.slice(0, 30) : [],
-      source_count: sources.length
+      source_count: sources.length,
+      diagnostics: { status: "success", provider: "Gemini", total_ms: Date.now() - researchStartedAt, grounded: sources.length > 0, source_count: sources.length }
     });
   } catch (error) {
-    return res.status(502).json({ error: "The research report could not be structured reliably. Please run the investigation again." });
+    console.error("[STRATOS] Research failed.", { provider: "Gemini", error: error?.message || "unknown error", total_ms: Date.now() - researchStartedAt });
+    return res.status(502).json({ error: "The research report could not be structured reliably. Please run the investigation again.", diagnostics: { status: "failed", provider: "Gemini", error: String(error?.message || "Research request failed.").slice(0, 220), total_ms: Date.now() - researchStartedAt } });
   }
 };
