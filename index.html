@@ -159,6 +159,29 @@
     <section id="research-status" class="research-status" aria-live="polite" hidden></section>
     <section id="research-results" class="research-results" aria-live="polite" hidden></section>
   </section>
+
+  <section class="feedback-loop" id="feedback-loop" aria-labelledby="feedback-loop-title">
+    <div class="feedback-loop-heading">
+      <div><p class="eyebrow">TEMPORARY TEST MODE</p><h2 id="feedback-loop-title">STRATOS feedback loop</h2><p>Help us identify failures and improve the quality of the analysis while the system is being stabilised.</p></div>
+      <span class="feedback-live-indicator"><i></i> LIVE MONITOR</span>
+    </div>
+    <div class="feedback-monitor" aria-live="polite">
+      <div class="feedback-monitor-top"><strong id="feedback-system-status">Waiting for a test run</strong><span id="feedback-last-run">No recent request</span></div>
+      <p id="feedback-system-detail">Run an analysis or research investigation to see which provider responded, how long it took, and whether a fallback was needed.</p>
+      <div class="feedback-provider-list" id="feedback-provider-list"><span class="feedback-provider pending">Gemini · waiting</span><span class="feedback-provider pending">Cloudflare · waiting</span><span class="feedback-provider pending">OpenRouter · waiting</span></div>
+    </div>
+    <form class="feedback-form" id="quality-feedback-form">
+      <div class="feedback-form-heading"><h3>How was the result?</h3><span>Send feedback</span></div>
+      <div class="feedback-form-grid">
+        <label>Overall quality<select id="feedback-rating" required><option value="">Choose one</option><option value="useful">Useful</option><option value="partly-useful">Partly useful</option><option value="not-useful">Not useful</option><option value="failed">No result / failed</option></select></label>
+        <label>What needs attention?<select id="feedback-issue"><option value="none">Nothing specific</option><option value="accuracy">Inaccurate or unrealistic</option><option value="missing">Important factors or counter-moves missing</option><option value="generic">Too generic / not profession-aware</option><option value="format">Poor structure or incomplete output</option><option value="speed">Too slow</option><option value="other">Other</option></select></label>
+      </div>
+      <label class="feedback-comment-label" for="feedback-comment">What should STRATOS have done differently? <span>(optional)</span></label>
+      <textarea id="feedback-comment" maxlength="1500" rows="3" placeholder="Be specific. For example: it missed a likely counterargument, assumed a fact, or gave a response that would not work in practice."></textarea>
+      <div class="feedback-submit-row"><p id="feedback-submit-status" aria-live="polite">Feedback is sent to temporary diagnostic logs. Avoid including confidential or personal information.</p><button class="feedback-submit-button" type="submit">Send feedback <span aria-hidden="true">↗</span></button></div>
+    </form>
+    <p class="feedback-temporary-note">This testing panel is temporary. Feedback is not stored in a permanent database; submissions are recorded in the deployment's server logs for review.</p>
+  </section>
 </main>
 <footer class="site-footer">
   <p>STRATOS — by David Jayy</p>
