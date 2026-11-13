@@ -37,7 +37,7 @@ module.exports = async function handler(req, res) {
     ].join("\n")
     : [
       "TASK — INITIAL EXPLORATION:",
-      "Generate an initial set of 8–12 distinct, leading plausible outcomes. This is a starting flashlight beam, not an exhaustive list. Choose breadth based on situation complexity: simple situations may need fewer; complex situations may support more.",
+      "Generate an initial set of 6–8 distinct, leading plausible outcomes. This is a starting flashlight beam, not an exhaustive list. Choose breadth based on situation complexity: simple situations may need fewer; complex situations may support more.",
       "Rank outcomes by comparative plausibility. Include favourable, unfavourable, mixed and surprising-but-plausible paths where supported. Do not force a quota of artificial outcomes."
     ].join("\n");
 
@@ -72,7 +72,12 @@ module.exports = async function handler(req, res) {
     "- Respect physical, financial, legal, social, operational and time constraints when relevant.",
     "- Do not assume a country, legal system, market or culture unless the user specifies it or the situation makes it clear.",
     "- Never invent exact statistics, named entities, regulations or research findings.",
-    "- Be concrete, specific and plain-spoken. Avoid jargon and padding.",
+    "- Be concrete, specific and plain-spoken. Avoid jargon, repetition and padding.",
+    "- Keep the initial response compact but analytically complete: aim for 6–8 outcomes, not an exhaustive catalogue.",
+    "- For each outcome, use concise, information-dense sentences. Include the actual causal mechanism, not generic explanation.",
+    "- Usually provide 2–4 conditions, 2–4 drivers, 2–4 observable early signs and 1–3 changing conditions per outcome; include fewer when fewer are genuinely relevant.",
+    "- For each major outcome, include up to 3 material counter-moves. Each response must state a practical preparation/action and the key evidence or signal to verify. Do not repeat the same advice across outcomes.",
+    "- Keep overview, scope boundary, component explanations and blind spots brief. Prioritize decision-relevant distinctions over length.",
     "- Wider factors must have an explained causal connection to the situation. No speculative universe expansion.",
     "Return ONLY valid JSON with this structure:",
     JSON.stringify({
@@ -112,7 +117,7 @@ module.exports = async function handler(req, res) {
           systemInstruction: { parts: [{ text: instructions }] },
           contents: [{ role: "user", parts: [{ text: userPrompt }] }],
           tools: groundedMode ? [{ google_search: {} }] : undefined,
-          generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
+          generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 12000 }
         })
       });
       const result = await upstream.json();
@@ -152,7 +157,7 @@ module.exports = async function handler(req, res) {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://stratossimulator.netlify.app", "X-Title": "STRATOS" },
             signal: AbortSignal.timeout(35000),
-            body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 12000 })
+            body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 8000 })
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data?.error?.message || ("OpenRouter returned HTTP " + response.status));
@@ -167,7 +172,7 @@ module.exports = async function handler(req, res) {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.CLOUDFLARE_API_TOKEN, "Content-Type": "application/json" },
             signal: AbortSignal.timeout(35000),
-            body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 12000 })
+            body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 8000 })
           });
           const data = await response.json();
           if (!response.ok || data?.success === false) throw new Error(data?.errors?.[0]?.message || ("Cloudflare returned HTTP " + response.status));
