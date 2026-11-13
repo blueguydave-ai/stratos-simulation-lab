@@ -10,6 +10,7 @@ module.exports = async function handler(req, res) {
   const action = req.body?.action === "expand" ? "expand" : "initial";
   const profession = typeof req.body?.profession === "string" ? req.body.profession.slice(0, 100) : "";
   const country = typeof req.body?.country === "string" ? req.body.country.trim().slice(0, 120) : "";
+  const professionalMode = req.body?.professional_mode === true;
   const existing = Array.isArray(req.body?.existing_outcomes) ? req.body.existing_outcomes.slice(0, 100).map(x => String(x).slice(0, 180)) : [];
   if (scenario.length < 20) return res.status(400).json({ error: "Please provide a more detailed description of the situation." });
   if (scenario.length > 8000) return res.status(413).json({ error: "The description is too long. Please keep it under 8,000 characters." });
@@ -43,10 +44,14 @@ module.exports = async function handler(req, res) {
   const instructions = [
     "You are STRATOS, a rigorous outcome-discovery and scenario-analysis engine. The user provides ONE natural-language description. Expose plausible ways the situation could unfold and the conditions that cause each. Build a provisional causal model, then challenge it. Do not merely paraphrase the input or generate generic pros and cons.",
     scopeRules,
+    "OPERATING MODE: " + (professionalMode ? "PROFESSIONAL MODE" : "STRATEGIC MODE"),
+    professionalMode
+      ? "PROFESSIONAL MODE OUTPUT STANDARD: Serve the working professional, not a casual explorer. Lead with the decision-relevant point. Use the terminology practitioners actually use in this field, but explain uncommon terms briefly. Keep each point short, specific and actionable. Prioritize the few material issues; do not flood the user with every conceivable detail. Put supporting analysis, source references and technical depth behind clearly separated details. Identify the relevant specialty and real workflow; do not assume all people in a broad profession work alike."
+      : "STRATEGIC MODE OUTPUT STANDARD: Remain profession-neutral unless the scenario itself requires a specialist role. Explore causal dynamics, actors, incentives, counter-moves, vulnerabilities, strategic options and second-order effects in clear language. Do not turn a general strategy question into professional advice.",
     "PROFESSIONAL AND COUNTRY CONTEXT:",
     profession ? ("PROFESSION: " + profession) : "PROFESSION: Infer relevant roles only when supported by the scenario; otherwise keep the analysis cross-functional.",
     country ? ("COUNTRY / JURISDICTION: " + country) : "COUNTRY / JURISDICTION: Do not assume a country. Mark local context as unknown when it matters.",
-    "When a profession is supplied, model actual work: workflows, decision rights, deliverables, tools, skills, standards, licensing or registration where applicable, client/patient/customer relationships, supervisors, colleagues, counterparties, liability, ethics, safety duties, commercial pressures, workload, career incentives, failure modes and quality controls. Include only relevant dimensions.",
+    "When Professional Mode is active, identify the actual profession or specialty from the selected role and scenario. Model real workflows, decision rights, deliverables, tools, standards, licensing or registration where applicable, client/patient/customer relationships, counterparties, liability, ethics, safety duties, commercial pressures, failure modes and quality controls. Identify the real materials practitioners rely on where relevant: current legislation and regulations, official guidance, professional-body standards, technical codes, clinical guidelines, manuals, protocols, specifications, contracts, accounting/audit standards, research literature, institutional policies and authoritative databases. Select only materials relevant to the actual task and jurisdiction; do not invent titles, clauses, standards or citations. Distinguish binding requirements from guidance, common practice and opinion.",
     "When a country is supplied, adapt the model to that jurisdiction. Distinguish law/regulation from local custom, institutional practice and employer policy. Consider relevant regulators, licensing bodies, labour rules, tax, procurement, payment infrastructure, professional associations, public/private sector differences, language, infrastructure and economic conditions where material. Never stereotype or assume uniform practice within a country.",
     "For jurisdiction-specific legal, regulatory, licensing, tax or safety claims, prioritize current official or primary sources. If evidence is unavailable or conflicting, label the point unverified and identify what a local professional should confirm. Never invent statutes, rules, salary data, credentials or local customs.",
     "Generate multiple distinct outcomes grounded in the selected profession and jurisdiction. Include routine, favourable, adverse, edge-case and second-order pathways where relevant. Model interactions among professionals, clients, managers, regulators, suppliers, institutions and the public. Account for limited information, competing incentives, workload, resource scarcity and local constraints.",
@@ -56,10 +61,11 @@ module.exports = async function handler(req, res) {
     "2. Discover potentially relevant components within the selected scope: actors, groups, incentives, information gaps, influential variables, constants, constraints, resources, processes, dependencies, relationships, institutions, tools, infrastructure, feedback loops, bottlenecks and external forces. Include only components that can plausibly affect this situation.",
     "3. A variable can change. A constant is fixed or effectively fixed within the scenario's stated boundary and timeframe. A constraint limits possible actions or states. An unknown is missing information that could change the analysis. Do not confuse these categories.",
     "4. Identify interactions: one factor amplifying, suppressing, delaying or redirecting another. Include reactions and counter-reactions by actors with limited information and plausible incentives.",
+    "5. COUNTER-MOVE AND RESPONSE ANALYSIS: For each major outcome, identify the most plausible opposing move, challenge, objection, competing explanation, failure mode or adverse development. Then give a proportionate response or preparation step, what evidence or information would be needed, and what could make that response fail. In professional contexts, use the field’s real procedures and standards. In general strategic contexts, keep recommendations role-neutral. Do not assume deception or fabrication without evidence; describe indicators and verification steps instead.",
     taskRules,
-    "5. For every outcome, explain what happens, its causal chain, the combination of conditions required, key drivers, observable early signs and what would increase, reduce or prevent it.",
-    "6. Conduct a blind-spot audit for hidden dependencies, overlooked actors, indirect effects, constraints, constants, feedback loops and fragile assumptions.",
-    "7. Check that outcomes are causally distinct, grounded in the scenario and consistent with constraints. Branch on uncertainty instead of pretending missing facts are known.",
+    "6. For every outcome, explain what happens, its causal chain, the combination of conditions required, key drivers, observable early signs and what would increase, reduce or prevent it.",
+    "7. Conduct a blind-spot audit for hidden dependencies, overlooked actors, indirect effects, constraints, constants, feedback loops and fragile assumptions.",
+    "8. Check that outcomes are causally distinct, grounded in the scenario and consistent with constraints. Branch on uncertainty instead of pretending missing facts are known.",
     "REALISM RULES:",
     "- This is scenario exploration, not a guarantee or calibrated forecast. Never invent numerical probabilities.",
     "- Likelihood labels are comparative only: Higher, Moderate or Lower. They describe relative plausibility within this set, not measured odds.",
@@ -81,7 +87,7 @@ module.exports = async function handler(req, res) {
       unknowns:[{name:"...",why_it_matters:"..."}],
       interactions:[{name:"...",why:"..."}],
       key_drivers:["..."],
-      outcomes:[{rank:1,title:"distinct outcome",category:"dominant driver",likelihood:"Higher|Moderate|Lower",description:"what happens",causal_chain:"cause to effect chain",conditions:["..."],drivers:["..."],early_signs:["..."],changing_conditions:["..."],blind_spot:"..."}],
+      outcomes:[{rank:1,title:"distinct outcome",category:"dominant driver",likelihood:"Higher|Moderate|Lower",description:"what happens",causal_chain:"cause to effect chain",conditions:["..."],drivers:["..."],early_signs:["..."],changing_conditions:["..."],counter_moves:[{move:"Plausible challenge, objection, reaction or failure mode",response:"Practical response or preparation",evidence_needed:"Information or evidence needed",watch_for:"Signal that this branch is developing"}],blind_spot:"..."}],
       blind_spots:[{title:"...",why_it_matters:"..."}],
       professional_context:{profession:"selected or inferred profession",country:"selected country or jurisdiction",workflow_nuances:["..."],local_practice_and_rules:["..."],role_dynamics:["..."],professional_risks:["..."],verification_gaps:["..."]},
       caveat:"how to interpret and test these scenarios"
@@ -96,10 +102,10 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: instructions }] },
         contents: [{ role: "user", parts: [{ text: "Analyse this situation within the selected scope and return the required JSON:\n\n" + scenario }] }],
-        tools: profession || country ? [{ google_search: {} }] : undefined,
+        tools: professionalMode || profession || country ? [{ google_search: {} }] : undefined,
         // Gemini does not support application/json response MIME type together with Google Search tools.
         // Keep JSON-only instructions in the prompt when grounding is enabled; use constrained JSON mode otherwise.
-        generationConfig: { ...(profession || country ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
+        generationConfig: { ...(professionalMode || profession || country ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 18000 }
       })
     });
     const result = await upstream.json();
