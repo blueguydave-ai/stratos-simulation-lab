@@ -4,6 +4,9 @@
   "functions": {
     "api/outcomes.js": {
       "maxDuration": 120
+    },
+    "api/research.js": {
+      "maxDuration": 120
     }
   }
 }
