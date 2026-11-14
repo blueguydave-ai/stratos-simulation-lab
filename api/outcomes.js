@@ -1,5 +1,43 @@
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+// Extract one complete JSON object without being confused by braces inside strings.
+function extractJsonObject(raw) {
+  const text = String(raw || "").replace(/^\uFEFF/, "").trim()
+    .replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+  const start = text.indexOf("{");
+  if (start < 0) throw new Error("No JSON object in AI response.");
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  throw new Error("AI response ended before the JSON object was complete.");
+}
+
+function parseJsonResponse(raw) {
+  const extracted = extractJsonObject(raw);
+  try {
+    return JSON.parse(extracted);
+  } catch (firstError) {
+    // Recover the common harmless formatting error: trailing commas.
+    const repaired = extracted.replace(/,\s*([}\]])/g, "$1");
+    if (repaired === extracted) throw firstError;
+    return JSON.parse(repaired);
+  }
+}
+
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Use POST to run an outcome analysis." }); }
   const apiKey = process.env.GEMINI_API_KEY;
@@ -105,7 +143,7 @@ module.exports = async function handler(req, res) {
   const requestStartedAt = Date.now();
   const providerAttempts = [];
   // Keep total provider work safely below Vercel's 120-second function limit.
-  const executionBudgetMs = 108000;
+  const executionBudgetMs = 65000;
   const providerTimeout = maxMs => {
     const remaining = executionBudgetMs - (Date.now() - requestStartedAt) - 5000;
     if (remaining < 1000) throw new Error("STRATOS reached its safe execution time budget.");
@@ -125,7 +163,7 @@ module.exports = async function handler(req, res) {
         const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          signal: AbortSignal.timeout(providerTimeout(60000)),
+          signal: AbortSignal.timeout(providerTimeout(24000)),
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: instructions }] },
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
@@ -156,13 +194,23 @@ module.exports = async function handler(req, res) {
     }
 
     const parseAnalysis = raw => {
-      const cleaned = String(raw || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```\s*$/, "");
-      const firstBrace = cleaned.indexOf("{");
-      const lastBrace = cleaned.lastIndexOf("}");
-      if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("No JSON object in outcome response.");
-      const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+      const parsed = parseJsonResponse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("The response was not a JSON object.");
       if (!Array.isArray(parsed.outcomes)) throw new Error("The response did not contain an outcomes array.");
+      parsed.outcomes = parsed.outcomes.filter(item => item && typeof item === "object" && !Array.isArray(item));
       if (action === "initial" && parsed.outcomes.length < 3) throw new Error("The response contained fewer than 3 usable outcomes.");
+      // Optional sections can be absent without invalidating otherwise useful outcomes.
+      for (const key of ["influential_variables", "constants", "constraints", "actors", "components", "unknowns", "interactions", "key_drivers", "blind_spots"]) {
+        if (!Array.isArray(parsed[key])) parsed[key] = [];
+      }
+      parsed.outcomes = parsed.outcomes.map(item => ({
+        ...item,
+        conditions: Array.isArray(item.conditions) ? item.conditions : [],
+        drivers: Array.isArray(item.drivers) ? item.drivers : [],
+        early_signs: Array.isArray(item.early_signs) ? item.early_signs : [],
+        changing_conditions: Array.isArray(item.changing_conditions) ? item.changing_conditions : [],
+        counter_moves: Array.isArray(item.counter_moves) ? item.counter_moves : []
+      }));
       return parsed;
     };
 
@@ -188,7 +236,7 @@ module.exports = async function handler(req, res) {
           const response = await fetch("https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID) + "/ai/run/" + encodeURI(model), {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.CLOUDFLARE_API_TOKEN, "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(providerTimeout(30000)),
+            signal: AbortSignal.timeout(providerTimeout(16000)),
             body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
@@ -202,7 +250,7 @@ module.exports = async function handler(req, res) {
           const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY, "Content-Type": "application/json", "X-Title": "STRATOS" },
-            signal: AbortSignal.timeout(providerTimeout(40000)),
+            signal: AbortSignal.timeout(providerTimeout(18000)),
             body: JSON.stringify({ model: "openrouter/free", messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
           });
           const data = await response.json();
