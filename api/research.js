@@ -1,5 +1,43 @@
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+// Extract one complete JSON object without being confused by braces inside strings.
+function extractJsonObject(raw) {
+  const text = String(raw || "").replace(/^\uFEFF/, "").trim()
+    .replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+  const start = text.indexOf("{");
+  if (start < 0) throw new Error("No JSON object in AI response.");
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  throw new Error("AI response ended before the JSON object was complete.");
+}
+
+function parseJsonResponse(raw) {
+  const extracted = extractJsonObject(raw);
+  try {
+    return JSON.parse(extracted);
+  } catch (firstError) {
+    // Recover the common harmless formatting error: trailing commas.
+    const repaired = extracted.replace(/,\s*([}\]])/g, "$1");
+    if (repaired === extracted) throw firstError;
+    return JSON.parse(repaired);
+  }
+}
+
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -120,6 +158,7 @@ module.exports = async function handler(req, res) {
     const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(MODEL) + ":generateContent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      signal: AbortSignal.timeout(55000),
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         tools: [{ google_search: {} }],
@@ -129,18 +168,21 @@ module.exports = async function handler(req, res) {
 
     const result = await upstream.json();
     if (!upstream.ok) {
-      return res.status(upstream.status === 429 ? 429 : 502).json({ error: result?.error?.message || "The research provider rejected the request." });
+      const message = result?.error?.message || "The research provider rejected the request.";
+      console.error("[STRATOS] Research provider HTTP failure.", { status: upstream.status, error: message, total_ms: Date.now() - researchStartedAt });
+      return res.status(upstream.status === 429 ? 429 : 502).json({ error: message, diagnostics: { status: "failed", provider: "Gemini", http_status: upstream.status, error: String(message).slice(0, 220), total_ms: Date.now() - researchStartedAt } });
     }
 
     const candidate = result?.candidates?.[0];
     const rawText = candidate?.content?.parts?.map(part => part.text || "").join("").trim();
     if (!rawText) return res.status(502).json({ error: "The research service returned no report. Please try again." });
 
-    const cleaned = rawText.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
-    const firstBrace = cleaned.indexOf("{");
-    const lastBrace = cleaned.lastIndexOf("}");
-    if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("No JSON object in research response.");
-    const report = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+    const report = parseJsonResponse(rawText);
+    if (!report || typeof report !== "object" || Array.isArray(report)) throw new Error("Research response was not a JSON object.");
+    // Keep the report renderable when the model omits an optional section.
+    for (const key of ["key_findings", "evidence_points", "landscape", "competitive_landscape", "market_segments", "charts", "stakeholders", "information_asymmetries", "opportunities", "risks", "blind_spot_audit", "open_questions", "recommendations", "watchlist", "limitations", "search_queries"]) {
+      if (!Array.isArray(report[key])) report[key] = [];
+    }
 
     const grounding = candidate?.groundingMetadata || {};
     const chunks = Array.isArray(grounding.groundingChunks) ? grounding.groundingChunks : [];
