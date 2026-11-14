@@ -97,28 +97,18 @@ module.exports = async function handler(req, res) {
       "CONTEXT: Keep Strategic Mode profession-neutral unless the scenario itself requires specialist roles. Do not add professional or jurisdiction-specific assumptions that the scenario does not support."
     ]),
     "ANALYSIS METHOD:",
-    "1. Separate facts explicitly stated by the user from inferences and unknowns. Never silently promote an assumption into a fact.",
-    "2. Discover potentially relevant components within the selected scope: actors, groups, incentives, information gaps, influential variables, constants, constraints, resources, processes, dependencies, relationships, institutions, tools, infrastructure, feedback loops, bottlenecks and external forces. Include only components that can plausibly affect this situation.",
-    "3. A variable can change. A constant is fixed or effectively fixed within the scenario's stated boundary and timeframe. A constraint limits possible actions or states. An unknown is missing information that could change the analysis. Do not confuse these categories.",
-    "4. Identify interactions: one factor amplifying, suppressing, delaying or redirecting another. Include reactions and counter-reactions by actors with limited information and plausible incentives.",
-    "5. COUNTER-MOVE AND RESPONSE ANALYSIS: For each major outcome, identify the most plausible opposing move, challenge, objection, competing explanation, failure mode or adverse development. Then give a proportionate response or preparation step, what evidence or information would be needed, and what could make that response fail. In professional contexts, use the field’s real procedures and standards. In general strategic contexts, keep recommendations role-neutral. Do not assume deception or fabrication without evidence; describe indicators and verification steps instead.",
-    taskRules,
-    "6. For every outcome, explain what happens, its causal chain, the combination of conditions required, key drivers, observable early signs and what would increase, reduce or prevent it.",
-    "7. Conduct a blind-spot audit for hidden dependencies, overlooked actors, indirect effects, constraints, constants, feedback loops and fragile assumptions.",
-    "8. Check that outcomes are causally distinct, grounded in the scenario and consistent with constraints. Branch on uncertainty instead of pretending missing facts are known.",
-    "REALISM RULES:",
-    "- This is scenario exploration, not a guarantee or calibrated forecast. Never invent numerical probabilities.",
-    "- Likelihood labels are comparative only: Higher, Moderate or Lower. They describe relative plausibility within this set, not measured odds.",
-    "- Respect physical, financial, legal, social, operational and time constraints when relevant.",
-    "- Do not assume a country, legal system, market or culture unless the user specifies it or the situation makes it clear.",
-    "- Never invent exact statistics, named entities, regulations or research findings.",
-    "- Be concrete, specific and plain-spoken. Avoid jargon, repetition and padding.",
-    "- Keep the initial response compact but analytically complete: aim for 6–8 outcomes, not an exhaustive catalogue.",
-    "- For each outcome, use concise, information-dense sentences. Include the actual causal mechanism, not generic explanation.",
-    "- Usually provide 2–4 conditions, 2–4 drivers, 2–4 observable early signs and 1–3 changing conditions per outcome; include fewer when fewer are genuinely relevant.",
-    "- For each major outcome, include up to 3 material counter-moves. Each response must state a practical preparation/action and the key evidence or signal to verify. Do not repeat the same advice across outcomes.",
-    "- Keep overview, scope boundary, component explanations and blind spots brief. Prioritize decision-relevant distinctions over length.",
-    "- Wider factors must have an explained causal connection to the situation. No speculative universe expansion.",
+    "Build a small causal model of the selected scope. Separate stated facts, inferences and unknowns. Identify only material actors, incentives, variables, fixed constants, constraints, resources, processes, dependencies and feedback loops.",
+    "Explain the important interactions: what amplifies, blocks, delays or redirects what. Account for plausible reactions by actors with limited information and competing incentives.",
+    "For each distinct outcome, show the causal chain, required conditions, main drivers, observable early signs, what could change the path, and the strongest relevant counter-move. Give a practical response, what evidence or information would verify it, and a warning signal. Do not assume deception or fabrication without evidence.",
+    "Audit blind spots, fragile assumptions and second-order effects. Keep outcomes causally distinct and consistent with the scenario's real constraints. Branch on important unknowns rather than treating guesses as facts.",
+    "OUTPUT DISCIPLINE:",
+    "- Initial analysis: 6–8 distinct plausible outcomes; expansion: 5–7 additional outcomes. Rank by comparative plausibility and include favourable, unfavourable, mixed or surprising paths only when supported.",
+    "- For each outcome, use concise, information-dense writing: normally 1–3 sentences for description and causal chain, 2–3 conditions, 2–3 drivers, 2–3 early signs, 1–2 changing conditions and 1–2 material counter-moves.",
+    "- Each counter-move must include a practical response, evidence_needed and watch_for. Avoid repeating advice.",
+    "- Keep overview and supporting sections brief. Include only material components; wider factors need a credible causal link to the situation.",
+    "- Likelihood is comparative only (Higher, Moderate, Lower), never a measured probability. Do not invent statistics, named entities, rules, citations or facts.",
+    "- Strategic Mode stays profession-neutral. Professional Mode uses the actual specialty, workflow and jurisdiction; distinguish binding requirements from guidance and common practice. Never invent standards or local rules; flag verification gaps and prefer official sources for jurisdiction-specific claims.",
+    "- Respect physical, financial, legal, social, operational and time constraints. This is scenario exploration, not a guaranteed forecast.",
     "Return ONLY valid JSON with this structure:",
     JSON.stringify({
       title:"short situation-specific title",
@@ -168,7 +158,7 @@ module.exports = async function handler(req, res) {
             systemInstruction: { parts: [{ text: instructions }] },
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
             tools: groundedMode ? [{ google_search: {} }] : undefined,
-            generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 7000 }
+            generationConfig: { ...(groundedMode ? {} : { responseMimeType: "application/json" }), temperature: action === "expand" ? 0.75 : 0.65, maxOutputTokens: 5000 }
           })
         });
         const result = await upstream.json();
@@ -237,7 +227,7 @@ module.exports = async function handler(req, res) {
             method: "POST",
             headers: { "Authorization": "Bearer " + process.env.CLOUDFLARE_API_TOKEN, "Content-Type": "application/json" },
             signal: AbortSignal.timeout(providerTimeout(16000)),
-            body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 6000 })
+            body: JSON.stringify({ messages: [{ role: "system", content: instructions }, { role: "user", content: userPrompt }], temperature: action === "expand" ? 0.75 : 0.65, max_tokens: 4200 })
           });
           const data = await response.json();
           if (!response.ok || data?.success === false) throw new Error(data?.errors?.[0]?.message || ("Cloudflare returned HTTP " + response.status));
